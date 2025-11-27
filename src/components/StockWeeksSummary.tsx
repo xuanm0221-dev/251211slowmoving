@@ -29,17 +29,22 @@ const ITEM_TAB_INFO: Record<ItemTab, { icon: string; label: string }> = {
   Acc_etc: { icon: "⭐", label: "기타" },
 };
 
-// Summary 행 정의
+// 브랜드별 "전체" 박스 연한 배경색
+const BRAND_LIGHT_COLORS: Record<Brand, string> = {
+  "MLB": "#F5F7FB",        // 더 밝은 네이비
+  "MLB KIDS": "#FFFDF7",   // 더 밝은 노랑
+  "DISCOVERY": "#F5FDF9",  // 더 밝은 초록
+};
+
+// Summary 행 정의 (새 구조: 전체 → 주력/아울렛 → 대리상/창고)
 const SUMMARY_ROWS = [
-  { label: "전체주수", isHeader: true, type: "total" },
-  { label: "ㄴ 주력상품", isHeader: false, type: "total_core" },
-  { label: "ㄴ 아울렛상품", isHeader: false, type: "total_outlet" },
-  { label: "대리상주수", isHeader: true, type: "frs" },
-  { label: "ㄴ 주력상품", isHeader: false, type: "frs_core" },
-  { label: "ㄴ 아울렛상품", isHeader: false, type: "frs_outlet" },
-  { label: "창고주수", isHeader: true, type: "warehouse" },
-  { label: "ㄴ 주력상품", isHeader: false, type: "warehouse_core" },
-  { label: "ㄴ 아울렛상품", isHeader: false, type: "warehouse_outlet" },
+  { label: "전체주수", level: 0, type: "total" },           // 헤더 level 0
+  { label: "ㄴ 주력상품", level: 1, type: "total_core" },   // 헤더 level 1
+  { label: "- 대리상", level: 2, type: "frs_core" },        // 상세 level 2
+  { label: "- 창고", level: 2, type: "warehouse_core" },    // 상세 level 2
+  { label: "ㄴ 아울렛상품", level: 1, type: "total_outlet" }, // 헤더 level 1
+  { label: "- 대리상", level: 2, type: "frs_outlet" },      // 상세 level 2
+  { label: "- 창고", level: 2, type: "warehouse_outlet" },  // 상세 level 2
 ];
 
 // 2025년 월 옵션
@@ -197,14 +202,22 @@ export default function StockWeeksSummary({
   const renderCard = (itemTab: ItemTab) => {
     const info = ITEM_TAB_INFO[itemTab];
     const prevMonth = getPreviousYearMonth(selectedMonth);
+    
+    // "전체" 박스는 브랜드별 연한 배경색 적용
+    const isAllTab = itemTab === "전체";
+    const cardBgColor = isAllTab ? BRAND_LIGHT_COLORS[brand] : "#ffffff";
 
     return (
       <div
         key={itemTab}
-        className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden"
+        className="border border-gray-200 rounded-xl shadow-sm overflow-hidden"
+        style={{ backgroundColor: cardBgColor }}
       >
         {/* 카드 헤더 */}
-        <div className="bg-gray-50 px-3 py-2 border-b border-gray-200">
+        <div 
+          className="px-3 py-2 border-b border-gray-200"
+          style={{ backgroundColor: isAllTab ? 'rgba(0,0,0,0.05)' : '#f9fafb' }}
+        >
           <div className="flex items-center gap-1.5">
             <span className="text-base">{info.icon}</span>
             <span className="font-semibold text-gray-800 text-sm">{info.label}</span>
@@ -232,18 +245,24 @@ export default function StockWeeksSummary({
                 const weeksDiffFormatted = formatWeeksDiff(weeksDiff);
                 const inventoryYOY = formatInventoryYOY(currentData.inventory, prevData.inventory);
 
+                // level 0, 1은 헤더 스타일 (회색 배경 + 구분선)
+                const isHeader = row.level === 0 || row.level === 1;
+                // 들여쓰기: level 1 = pl-2, level 2 = pl-4
+                const paddingClass = row.level === 0 ? "" : row.level === 1 ? "pl-2" : "pl-4";
+
                 return (
                   <tr
                     key={idx}
                     className={cn(
-                      row.isHeader && "border-b border-gray-300"
+                      isHeader && "border-b border-gray-300"
                     )}
-                    style={row.isHeader ? { backgroundColor: '#f3f4f6' } : undefined}
+                    style={isHeader ? { backgroundColor: '#f3f4f6' } : undefined}
                   >
                     <td
                       className={cn(
                         "px-1.5 py-1 text-left whitespace-nowrap",
-                        row.isHeader ? "font-semibold text-gray-800" : "text-gray-600 pl-3"
+                        isHeader ? "font-semibold text-gray-800" : "text-gray-600",
+                        paddingClass
                       )}
                     >
                       {row.label}
@@ -254,7 +273,7 @@ export default function StockWeeksSummary({
                     <td className={cn("px-1.5 py-1 text-right font-medium whitespace-nowrap", weeksDiffFormatted.color)}>
                       {weeksDiffFormatted.text}
                     </td>
-                    <td className="px-1.5 py-1 text-right font-medium text-gray-800 whitespace-nowrap">
+                    <td className="px-1.5 py-1 text-right text-gray-500 whitespace-nowrap">
                       {currentData.inventory === 0 ? "-" : `${formatWithComma(currentData.inventory)}M`}
                     </td>
                     <td className={cn("px-1.5 py-1 text-right font-medium whitespace-nowrap", inventoryYOY.color)}>

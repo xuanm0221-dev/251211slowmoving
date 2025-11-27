@@ -88,6 +88,12 @@ export interface InventorySummaryData {
 // 아이템 탭 타입
 export type ItemTab = "전체" | "Shoes" | "Headwear" | "Bag" | "Acc_etc";
 
+// 채널 탭 타입 (차트용)
+export type ChannelTab = "ALL" | "FRS" | "창고";
+
+// 채널 탭 목록
+export const CHANNEL_TABS: ChannelTab[] = ["ALL", "FRS", "창고"];
+
 // 브랜드 타입
 export type Brand = "MLB" | "MLB KIDS" | "DISCOVERY";
 

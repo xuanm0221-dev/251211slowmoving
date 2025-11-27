@@ -6,6 +6,7 @@ import {
   SalesBrandData, 
   InventoryBrandData,
   ItemTab, 
+  ChannelTab,
   SalesSummaryData, 
   InventorySummaryData,
   DEFAULT_STOCK_WEEK 
@@ -16,6 +17,8 @@ import SalesTable from "./SalesTable";
 import InventoryTable from "./InventoryTable";
 import StockWeeksTable from "./StockWeeksTable";
 import StockWeeksSummary from "./StockWeeksSummary";
+import StockWeeksChart from "./StockWeeksChart";
+import InventoryChart from "./InventoryChart";
 import WarningBanner from "./WarningBanner";
 import StockWeekInput from "./StockWeekInput";
 import CollapsibleSection from "./CollapsibleSection";
@@ -32,6 +35,8 @@ export default function BrandSalesPage({ brand, title }: BrandSalesPageProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [stockWeek, setStockWeek] = useState<number>(DEFAULT_STOCK_WEEK);
+  const [showAllItemsInChart, setShowAllItemsInChart] = useState(false); // 차트 모두선택 모드
+  const [channelTab, setChannelTab] = useState<ChannelTab>("ALL"); // 채널 탭 (ALL, FRS, 창고)
 
   useEffect(() => {
     const fetchData = async () => {
@@ -126,11 +131,43 @@ export default function BrandSalesPage({ brand, title }: BrandSalesPageProps) {
               />
             )}
 
-            {/* 1. 아이템 탭 + Stock Week 입력 */}
+            {/* 1. 아이템 탭 + 차트 모두선택 + 채널 탭 + Stock Week 입력 */}
             <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-              <ItemTabs selectedTab={selectedTab} onTabChange={setSelectedTab} brand={brand} />
+              <ItemTabs 
+                selectedTab={selectedTab} 
+                onTabChange={setSelectedTab} 
+                brand={brand}
+                showAllItems={showAllItemsInChart}
+                setShowAllItems={setShowAllItemsInChart}
+                channelTab={channelTab}
+                setChannelTab={setChannelTab}
+              />
               <StockWeekInput value={stockWeek} onChange={setStockWeek} />
             </div>
+
+            {/* 1.5. 월별 재고주수 추이 차트 */}
+            {salesTabData && inventoryTabData && inventoryData?.daysInMonth && (
+              <StockWeeksChart
+                selectedTab={selectedTab}
+                inventoryData={inventoryTabData}
+                salesData={salesTabData}
+                daysInMonth={inventoryData.daysInMonth}
+                stockWeek={stockWeek}
+                showAllItems={showAllItemsInChart}
+                allInventoryData={inventoryBrandData}
+                allSalesData={salesBrandData}
+                channelTab={channelTab}
+              />
+            )}
+
+            {/* 1.6. 월별 재고자산 추이 막대차트 */}
+            {inventoryBrandData && (
+              <InventoryChart
+                selectedTab={selectedTab}
+                inventoryBrandData={inventoryBrandData}
+                channelTab={channelTab}
+              />
+            )}
 
             {/* 2. 2025년 재고주수 표 */}
             {salesTabData && inventoryTabData && inventoryData?.daysInMonth && (
