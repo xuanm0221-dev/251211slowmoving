@@ -65,7 +65,7 @@ const MONTHS_2025 = [
 const CHANNEL_LABELS: Record<ChannelTab, string> = {
   ALL: "전체",
   FRS: "대리상",
-  창고: "창고",
+  창고: "본사물류",
 };
 
 // 상품 타입 탭 타입

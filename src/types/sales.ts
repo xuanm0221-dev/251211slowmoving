@@ -132,7 +132,7 @@ export const INVENTORY_TABLE_ROWS: TableRow[] = [
   { label: "직영재고", isHeader: true, indent: false, dataKey: "직영" },
   { label: "ㄴ 주력상품", isHeader: false, indent: true, dataKey: "직영_core" },
   { label: "ㄴ 아울렛상품", isHeader: false, indent: true, dataKey: "직영_outlet" },
-  { label: "창고재고", isHeader: true, indent: false, dataKey: "창고" },
+  { label: "본사물류재고", isHeader: true, indent: false, dataKey: "창고" },
   { label: "ㄴ 주력상품", isHeader: false, indent: true, dataKey: "창고_core" },
   { label: "ㄴ 아울렛상품", isHeader: false, indent: true, dataKey: "창고_outlet" },
 ];
@@ -163,18 +163,18 @@ export const BRANDS: {
     key: "MLB KIDS", 
     name: "MLB KIDS", 
     path: "/mlb-kids-sales",
-    activeColor: "bg-[#F5C518]",      // MLB KIDS 골드/옐로우
+    activeColor: "bg-[#FDE047]",      // MLB KIDS 환한 노란색 (yellow-200)
     activeTextColor: "text-gray-900", // 노란 배경에는 검은 텍스트
-    hoverColor: "hover:bg-[#F5C518]/10",
+    hoverColor: "hover:bg-[#FDE047]/10",
     textColor: "text-[#D4A600]"
   },
   { 
     key: "DISCOVERY", 
     name: "DISCOVERY", 
     path: "/discovery-sales",
-    activeColor: "bg-[#2ED573]",      // Discovery 민트 그린
+    activeColor: "bg-[#14B8A6]",      // Discovery 맑은 초록색 (teal-500)
     activeTextColor: "text-white",
-    hoverColor: "hover:bg-[#2ED573]/10",
+    hoverColor: "hover:bg-[#14B8A6]/10",
     textColor: "text-[#2ED573]"
   },
 ];

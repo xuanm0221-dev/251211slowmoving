@@ -28,7 +28,7 @@ const STOCK_WEEKS_ROWS = [
   { label: "대리상주수", isHeader: true, indent: false, type: "frs", hasHeatmap: false },
   { label: "ㄴ 주력상품", isHeader: false, indent: true, type: "frs_core", hasHeatmap: true },
   { label: "ㄴ 아울렛상품", isHeader: false, indent: true, type: "frs_outlet", hasHeatmap: true },
-  { label: "창고재고주수", isHeader: true, indent: false, type: "warehouse", hasHeatmap: false },
+  { label: "본사물류재고주수", isHeader: true, indent: false, type: "warehouse", hasHeatmap: false },
   { label: "ㄴ 주력상품", isHeader: false, indent: true, type: "warehouse_core", hasHeatmap: false },
   { label: "ㄴ 아울렛상품", isHeader: false, indent: true, type: "warehouse_outlet", hasHeatmap: false },
 ];

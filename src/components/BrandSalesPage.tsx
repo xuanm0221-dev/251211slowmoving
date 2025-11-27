@@ -197,10 +197,10 @@ export default function BrandSalesPage({ brand, title }: BrandSalesPageProps) {
                       <span className="text-gray-600">대리상재고 ÷ (대리상판매 ÷ 일수 × 7)</span>
                     </div>
                     <div>
-                      <span className="text-gray-500">창고주수:</span>{" "}
+                      <span className="text-gray-500">본사물류주수:</span>{" "}
                       <div className="text-gray-600 mt-1">
-                        <div>• 주력: 창고재고 ÷ (전체판매 ÷ 일수 × 7)</div>
-                        <div>• 아울렛: 창고재고 ÷ (직영판매 ÷ 일수 × 7)</div>
+                        <div>• 주력: 본사물류재고 ÷ (전체판매 ÷ 일수 × 7) * 전체판매=직영+대리상 *</div>
+                        <div>• 아울렛: 본사물류재고 ÷ (직영판매 ÷ 일수 × 7)</div>
                       </div>
                     </div>
                   </div>
@@ -278,7 +278,7 @@ export default function BrandSalesPage({ brand, title }: BrandSalesPageProps) {
                     <span><span className="text-gray-400">전체재고:</span> FRS + HQ + OR</span>
                     <span><span className="text-gray-400">본사재고:</span> HQ + OR</span>
                     <span><span className="text-gray-400">직영재고:</span> OR판매 ÷ 일수 × 7 × {stockWeek}주</span>
-                    <span><span className="text-gray-400">창고재고:</span> 본사재고 - 직영재고</span>
+                    <span><span className="text-gray-400">본사물류재고:</span> 본사재고 - 직영재고</span>
                   </>
                 }
               >

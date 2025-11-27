@@ -29,11 +29,11 @@ const ITEM_TAB_INFO: Record<ItemTab, { icon: string; label: string }> = {
   Acc_etc: { icon: "⭐", label: "기타" },
 };
 
-// 브랜드별 "전체" 박스 연한 배경색
+// 브랜드별 "전체" 박스 연한 배경색 (파스텔 버전)
 const BRAND_LIGHT_COLORS: Record<Brand, string> = {
-  "MLB": "#F5F7FB",        // 더 밝은 네이비
-  "MLB KIDS": "#FFFDF7",   // 더 밝은 노랑
-  "DISCOVERY": "#F5FDF9",  // 더 밝은 초록
+  "MLB": "#E0F2FE",        // 파스텔 하늘색 (sky-100)
+  "MLB KIDS": "#FEF9E7",   // 파스텔 노란색
+  "DISCOVERY": "#E0F7F4",  // 파스텔 틸 그린
 };
 
 // Summary 행 정의 (새 구조: 전체 → 주력/아울렛 → 대리상/본사물류/직영)
