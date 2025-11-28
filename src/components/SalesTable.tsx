@@ -1,7 +1,7 @@
 "use client";
 
 import { SalesItemTabData, SalesMonthData, SALES_TABLE_ROWS } from "@/types/sales";
-import { formatAmountM, formatMonth, cn } from "@/lib/utils";
+import { formatAmountWon, formatMonth, cn } from "@/lib/utils";
 
 interface SalesTableProps {
   data: SalesItemTabData;
@@ -55,6 +55,7 @@ export default function SalesTable({ data, months }: SalesTableProps) {
               </td>
               {months.map((month) => {
                 const value = getCellValue(month, row.dataKey);
+                // JSON에 저장된 값은 이미 원 단위
                 return (
                   <td
                     key={month}
@@ -62,7 +63,7 @@ export default function SalesTable({ data, months }: SalesTableProps) {
                       row.isHeader && "row-header font-semibold"
                     )}
                   >
-                    {formatAmountM(value)}
+                    {formatAmountWon(value)}
                   </td>
                 );
               })}

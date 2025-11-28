@@ -15,6 +15,18 @@ export function formatAmountM(value: number | undefined | null): string {
 }
 
 /**
+ * 숫자를 천 단위 콤마 포함 원 단위 문자열로 변환
+ * @param value 원 단위 숫자
+ * @returns 포맷된 문자열 (예: "1,234,567,890")
+ */
+export function formatAmountWon(value: number | undefined | null): string {
+  if (value === undefined || value === null) {
+    return "0";
+  }
+  return value.toLocaleString("ko-KR");
+}
+
+/**
  * 월 문자열을 짧은 형식으로 변환
  * @param month "2024.01" 형식의 문자열
  * @returns "24.01" 형식의 문자열

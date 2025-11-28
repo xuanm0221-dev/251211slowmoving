@@ -1,7 +1,7 @@
 "use client";
 
 import { InventoryItemTabData, InventoryMonthData, INVENTORY_TABLE_ROWS } from "@/types/sales";
-import { formatAmountM, formatMonth, cn } from "@/lib/utils";
+import { formatAmountWon, formatMonth, cn } from "@/lib/utils";
 
 interface InventoryTableProps {
   data: InventoryItemTabData;
@@ -13,8 +13,9 @@ interface InventoryTableProps {
 export default function InventoryTable({ data, months, daysInMonth, stockWeek }: InventoryTableProps) {
   const calculateRetailStock = (orSales: number, days: number): number => {
     if (days === 0) return 0;
+    // OR_sales는 이미 원 단위로 저장되어 있음
     const stockAmount = (orSales / days) * 7 * stockWeek;
-    return Math.round(stockAmount / 1_000_000);
+    return Math.round(stockAmount);
   };
 
   const getCellValue = (month: string, dataKey: string): number => {
@@ -23,11 +24,15 @@ export default function InventoryTable({ data, months, daysInMonth, stockWeek }:
 
     const days = daysInMonth[month] || 30;
 
+    // OR_sales는 원 단위로 저장되어 있음
     const retailStockCore = calculateRetailStock(monthData.OR_sales_core || 0, days);
     const retailStockOutlet = calculateRetailStock(monthData.OR_sales_outlet || 0, days);
 
-    const warehouseStockCore = (monthData.HQ_OR_core || 0) - retailStockCore;
-    const warehouseStockOutlet = (monthData.HQ_OR_outlet || 0) - retailStockOutlet;
+    // 모든 재고 데이터는 원 단위로 저장되어 있음
+    const hqOrCoreWon = monthData.HQ_OR_core || 0;
+    const hqOrOutletWon = monthData.HQ_OR_outlet || 0;
+    const warehouseStockCore = hqOrCoreWon - retailStockCore;
+    const warehouseStockOutlet = hqOrOutletWon - retailStockOutlet;
 
     if (dataKey === "전체") {
       return (monthData.전체_core || 0) + (monthData.전체_outlet || 0);
@@ -36,7 +41,7 @@ export default function InventoryTable({ data, months, daysInMonth, stockWeek }:
       return (monthData.FRS_core || 0) + (monthData.FRS_outlet || 0);
     }
     if (dataKey === "HQ_OR") {
-      return (monthData.HQ_OR_core || 0) + (monthData.HQ_OR_outlet || 0);
+      return hqOrCoreWon + hqOrOutletWon;
     }
     if (dataKey === "직영") {
       return retailStockCore + retailStockOutlet;
@@ -49,8 +54,8 @@ export default function InventoryTable({ data, months, daysInMonth, stockWeek }:
     if (dataKey === "전체_outlet") return monthData.전체_outlet || 0;
     if (dataKey === "FRS_core") return monthData.FRS_core || 0;
     if (dataKey === "FRS_outlet") return monthData.FRS_outlet || 0;
-    if (dataKey === "HQ_OR_core") return monthData.HQ_OR_core || 0;
-    if (dataKey === "HQ_OR_outlet") return monthData.HQ_OR_outlet || 0;
+    if (dataKey === "HQ_OR_core") return hqOrCoreWon;
+    if (dataKey === "HQ_OR_outlet") return hqOrOutletWon;
     if (dataKey === "직영_core") return retailStockCore;
     if (dataKey === "직영_outlet") return retailStockOutlet;
     if (dataKey === "창고_core") return warehouseStockCore;
@@ -106,7 +111,7 @@ export default function InventoryTable({ data, months, daysInMonth, stockWeek }:
                       )}
                       style={grayBgStyle}
                     >
-                      {formatAmountM(value)}
+                      {formatAmountWon(value)}
                     </td>
                   );
                 })}

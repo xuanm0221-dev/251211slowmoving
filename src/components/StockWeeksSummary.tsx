@@ -44,7 +44,7 @@ const SUMMARY_ROWS = [
   { label: "(전년비)", level: 1, type: "total", isYoy: true },  // 전년비 행
   { label: "ㄴ 주력상품", level: 1, type: "total_core" },   // 헤더 level 1
   { label: "- 대리상", level: 2, type: "frs_core" },        // 상세 level 2
-  { label: "- 본사물류", level: 2, type: "warehouse_core" },    // 상세 level 2
+  { label: "- 창고", level: 2, type: "warehouse_core" },    // 상세 level 2
   { label: "- 직영", level: 2, type: "retail_core" },        // 상세 level 2 (새로 추가)
   { label: "ㄴ 아울렛상품", level: 1, type: "total_outlet" }, // 헤더 level 1
   { label: "- 대리상", level: 2, type: "frs_outlet" },      // 상세 level 2
@@ -118,8 +118,9 @@ export default function StockWeeksSummary({
     const orSalesCore = invData.OR_sales_core || 0;
     const orSalesOutlet = invData.OR_sales_outlet || 0;
 
-    const retailStockCore = calculateRetailStock(orSalesCore, days, itemTab) / 1_000_000;
-    const retailStockOutlet = calculateRetailStock(orSalesOutlet, days, itemTab) / 1_000_000;
+    // 모든 데이터는 원 단위로 저장되어 있음
+    const retailStockCore = calculateRetailStock(orSalesCore, days, itemTab);
+    const retailStockOutlet = calculateRetailStock(orSalesOutlet, days, itemTab);
 
     const warehouseStockCore = hqOrStockCore - retailStockCore;
     const warehouseStockOutlet = hqOrStockOutlet - retailStockOutlet;
@@ -158,7 +159,9 @@ export default function StockWeeksSummary({
         inventory = frsStockOutlet;
         break;
       case "warehouse":
-        weeks = calculateWeeks(warehouseStockCore + warehouseStockOutlet, totalSalesCore + totalSalesOutlet, days);
+        // 창고재고주수(전체) = 창고재고(전체) ÷ [(주력상품 대리상판매 + 주력상품 직영판매 + 아울렛상품 직영판매) ÷ 일수 × 7]
+        const warehouseSales = frsSalesCore + (slsData.OR_core || 0) + (slsData.OR_outlet || 0);
+        weeks = calculateWeeks(warehouseStockCore + warehouseStockOutlet, warehouseSales, days);
         inventory = warehouseStockCore + warehouseStockOutlet;
         break;
       case "warehouse_core":
@@ -168,9 +171,8 @@ export default function StockWeeksSummary({
       case "warehouse_outlet":
         // 본사물류재고 아울렛: 본사재고(HQ_OR_outlet)를 직접 사용 (본사물류재고 아님)
         // 직영판매(OR_sales)만 사용 (대리상판매 제외)
-        // OR_sales_outlet은 원 단위이므로 M 단위로 변환
-        const orSalesOutletM = orSalesOutlet / 1_000_000;
-        weeks = calculateWeeks(hqOrStockOutlet, orSalesOutletM, days);
+        // 모든 데이터는 원 단위로 저장되어 있음
+        weeks = calculateWeeks(hqOrStockOutlet, orSalesOutlet, days);
         inventory = hqOrStockOutlet;
         break;
       case "retail_core":
@@ -203,13 +205,25 @@ export default function StockWeeksSummary({
     return { text: `${yoy.toFixed(0)}%`, color: "text-blue-500" };
   };
 
-  // 재고금액 증감 포맷팅
-  const formatInventoryDiff = (diff: number): { text: string; color: string } => {
+  // 재고금액 증감 포맷팅 (백만원 단위 + 퍼센트)
+  const formatInventoryDiff = (diff: number, current: number, previous: number): { text: string; color: string } => {
     if (diff === 0) return { text: "-", color: "text-gray-500" };
-    if (diff > 0) {
-      return { text: `+${formatWithComma(diff)}M`, color: "text-red-500" };
+    
+    // 백만원 단위로 변환
+    const diffInMillion = diff / 1000000;
+    const diffFormatted = formatWithComma(Math.round(diffInMillion));
+    
+    // 퍼센트 계산
+    let percentText = "";
+    if (previous !== 0) {
+      const percent = (current / previous) * 100;
+      percentText = ` (${percent.toFixed(0)}%)`;
     }
-    return { text: `△${formatWithComma(Math.abs(diff))}M`, color: "text-blue-500" };
+    
+    if (diff > 0) {
+      return { text: `+${diffFormatted}${percentText}`, color: "text-red-500" };
+    }
+    return { text: `△${diffFormatted}${percentText}`, color: "text-blue-500" };
   };
 
   // 전년 동월 계산
@@ -306,7 +320,7 @@ export default function StockWeeksSummary({
                 const weeksDiffFormatted = formatWeeksDiff(weeksDiff);
                 const inventoryYOY = formatInventoryYOY(currentData.inventory, prevData.inventory);
                 const inventoryDiff = currentData.inventory - prevData.inventory;
-                const inventoryDiffFormatted = formatInventoryDiff(inventoryDiff);
+                const inventoryDiffFormatted = formatInventoryDiff(inventoryDiff, currentData.inventory, prevData.inventory);
 
                 // 전년비 행인 경우
                 if (row.isYoy) {
@@ -373,7 +387,7 @@ export default function StockWeeksSummary({
                       "px-1.5 py-1 text-right whitespace-nowrap",
                       isRetailCore ? "text-gray-400" : "text-gray-500"
                     )}>
-                      {currentData.inventory === 0 ? "-" : `${formatWithComma(currentData.inventory)}M`}
+                      {currentData.inventory === 0 ? "-" : formatWithComma(currentData.inventory / 1000000)}
                     </td>
                   </tr>
                 );

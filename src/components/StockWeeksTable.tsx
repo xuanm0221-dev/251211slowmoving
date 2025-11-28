@@ -28,7 +28,7 @@ const STOCK_WEEKS_ROWS = [
   { label: "대리상주수", isHeader: true, indent: false, type: "frs", hasHeatmap: false },
   { label: "ㄴ 주력상품", isHeader: false, indent: true, type: "frs_core", hasHeatmap: true },
   { label: "ㄴ 아울렛상품", isHeader: false, indent: true, type: "frs_outlet", hasHeatmap: true },
-  { label: "본사물류재고주수", isHeader: true, indent: false, type: "warehouse", hasHeatmap: false },
+  { label: "창고재고주수", isHeader: true, indent: false, type: "warehouse", hasHeatmap: false },
   { label: "ㄴ 주력상품", isHeader: false, indent: true, type: "warehouse_core", hasHeatmap: false },
   { label: "ㄴ 아울렛상품", isHeader: false, indent: true, type: "warehouse_outlet", hasHeatmap: false },
 ];
@@ -98,8 +98,9 @@ export default function StockWeeksTable({
     const orSalesCore = invData.OR_sales_core || 0;
     const orSalesOutlet = invData.OR_sales_outlet || 0;
 
-    const retailStockCore = calculateRetailStock(orSalesCore, days) / 1_000_000;
-    const retailStockOutlet = calculateRetailStock(orSalesOutlet, days) / 1_000_000;
+    // 모든 데이터는 원 단위로 저장되어 있음
+    const retailStockCore = calculateRetailStock(orSalesCore, days);
+    const retailStockOutlet = calculateRetailStock(orSalesOutlet, days);
 
     const warehouseStockCore = hqOrStockCore - retailStockCore;
     const warehouseStockOutlet = hqOrStockOutlet - retailStockOutlet;
@@ -133,19 +134,19 @@ export default function StockWeeksTable({
         return calculateWeeks(frsStockOutlet, frsSalesOutlet, days);
 
       case "warehouse":
+        // 창고재고주수(전체) = 창고재고(전체) ÷ [(주력상품 대리상판매 + 주력상품 직영판매 + 아울렛상품 직영판매) ÷ 일수 × 7]
+        const warehouseSales = frsSalesCore + (slsData.OR_core || 0) + (slsData.OR_outlet || 0);
         return calculateWeeks(
           warehouseStockCore + warehouseStockOutlet,
-          totalSalesCore + totalSalesOutlet,
+          warehouseSales,
           days
         );
       case "warehouse_core":
         return calculateWeeks(warehouseStockCore, totalSalesCore, days);
       case "warehouse_outlet":
-        // 본사물류재고 아울렛: 본사재고(HQ_OR_outlet)를 직접 사용 (본사물류재고 아님)
-        // 직영판매(OR_sales)만 사용 (대리상판매 제외)
-        // OR_sales_outlet은 원 단위이므로 M 단위로 변환
-        const orSalesOutletM = orSalesOutlet / 1_000_000;
-        return calculateWeeks(hqOrStockOutlet, orSalesOutletM, days);
+        // 창고재고(아울렛) ÷ (직영판매 아울렛 ÷ 일수 × 7)
+        // 모든 데이터는 원 단위로 저장되어 있음
+        return calculateWeeks(warehouseStockOutlet, orSalesOutlet, days);
 
       default:
         return { display: "-", value: -1 };

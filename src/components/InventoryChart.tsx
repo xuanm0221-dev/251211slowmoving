@@ -58,7 +58,7 @@ const ITEM_LABELS: Record<ItemTab, string> = {
 const CHANNEL_LABELS: Record<ChannelTab, string> = {
   ALL: "전체",
   FRS: "대리상",
-  창고: "본사물류",
+  창고: "창고",
 };
 
 export default function InventoryChart({
@@ -163,9 +163,9 @@ export default function InventoryChart({
   const itemLabel = ITEM_LABELS[selectedTab];
   const channelLabel = CHANNEL_LABELS[channelTab];
 
-  // Y축 포맷 (M 단위 숫자, 천단위 콤마)
+  // Y축 포맷 (M 단위 숫자, 천단위 콤마, 소수점 없음)
   const formatYAxis = (value: number) => {
-    return value.toLocaleString();
+    return Math.round(value / 1_000_000).toLocaleString();
   };
 
   return (
@@ -246,7 +246,7 @@ export default function InventoryChart({
                 fontSize: "12px"
               }}
               formatter={(value: number, name: string) => {
-                const formattedValue = value.toLocaleString() + "M";
+                const formattedValue = (value / 1_000_000).toLocaleString() + "M";
                 return [formattedValue, name];
               }}
             />

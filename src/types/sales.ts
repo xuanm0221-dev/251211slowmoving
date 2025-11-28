@@ -132,7 +132,7 @@ export const INVENTORY_TABLE_ROWS: TableRow[] = [
   { label: "직영재고", isHeader: true, indent: false, dataKey: "직영" },
   { label: "ㄴ 주력상품", isHeader: false, indent: true, dataKey: "직영_core" },
   { label: "ㄴ 아울렛상품", isHeader: false, indent: true, dataKey: "직영_outlet" },
-  { label: "본사물류재고", isHeader: true, indent: false, dataKey: "창고" },
+  { label: "창고재고", isHeader: true, indent: false, dataKey: "창고" },
   { label: "ㄴ 주력상품", isHeader: false, indent: true, dataKey: "창고_core" },
   { label: "ㄴ 아울렛상품", isHeader: false, indent: true, dataKey: "창고_outlet" },
 ];

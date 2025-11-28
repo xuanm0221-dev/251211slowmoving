@@ -13,9 +13,9 @@ import calendar
 
 # ========== 설정 ==========
 CHUNK_SIZE = 200_000
-INVENTORY_DATA_PATH = Path(r"C:\4.weekcover\data\inventory")
-SALES_JSON_PATH = Path(r"C:\4.weekcover\acc\public\data\accessory_sales_summary.json")
-OUTPUT_PATH = Path(r"C:\4.weekcover\acc\public\data")
+INVENTORY_DATA_PATH = Path(r"C:\3.accweekcover\data\inventory")
+SALES_JSON_PATH = Path(__file__).parent.parent / "public" / "data" / "accessory_sales_summary.json"
+OUTPUT_PATH = Path(__file__).parent.parent / "public" / "data"
 
 ANALYSIS_MONTHS = [
     "2024.01", "2024.02", "2024.03", "2024.04", "2024.05", "2024.06",
@@ -55,7 +55,7 @@ def get_days_in_month(year: int, month: int) -> int:
 
 
 def load_sales_or_data() -> Dict[Tuple, float]:
-    """판매 JSON에서 OR 매출 데이터 추출 (원 단위로 역변환)"""
+    """판매 JSON에서 OR 매출 데이터 추출 (원 단위로 저장되어 있음)"""
     sales_or_dict: Dict[Tuple, float] = {}
     
     if not SALES_JSON_PATH.exists():
@@ -75,11 +75,11 @@ def load_sales_or_data() -> Dict[Tuple, float]:
                 if month not in sales_data["brands"][brand][item_tab]:
                     continue
                 month_data = sales_data["brands"][brand][item_tab][month]
-                # M 단위를 원 단위로 역변환
+                # 이미 원 단위로 저장되어 있음
                 for op_group in ["core", "outlet"]:
                     key = (brand, item_tab, month, "OR", op_group)
-                    amount_m = month_data.get(f"OR_{op_group}", 0)
-                    sales_or_dict[key] = amount_m * 1_000_000
+                    amount_won = month_data.get(f"OR_{op_group}", 0)
+                    sales_or_dict[key] = amount_won
     
     return sales_or_dict
 
@@ -178,9 +178,9 @@ def convert_to_json(inv_agg: Dict, sales_or: Dict, unexpected: Set) -> Dict:
             for month in ANALYSIS_MONTHS:
                 md = {}
                 for op in ["core", "outlet"]:
-                    md[f"전체_{op}"] = round(inv_agg.get((brand, item_tab, month, "전체", op), 0) / 1_000_000)
-                    md[f"FRS_{op}"] = round(inv_agg.get((brand, item_tab, month, "FRS", op), 0) / 1_000_000)
-                    md[f"HQ_OR_{op}"] = round(inv_agg.get((brand, item_tab, month, "HQ_OR", op), 0) / 1_000_000)
+                    md[f"전체_{op}"] = round(inv_agg.get((brand, item_tab, month, "전체", op), 0))
+                    md[f"FRS_{op}"] = round(inv_agg.get((brand, item_tab, month, "FRS", op), 0))
+                    md[f"HQ_OR_{op}"] = round(inv_agg.get((brand, item_tab, month, "HQ_OR", op), 0))
                     md[f"OR_sales_{op}"] = sales_or.get((brand, item_tab, month, "OR", op), 0)
                 result["brands"][brand][item_tab][month] = md
     

@@ -14,9 +14,9 @@ import calendar
 
 # ========== 설정 ==========
 CHUNK_SIZE = 200_000  # 청크 크기 (메모리 여유에 따라 조정 가능)
-RETAIL_DATA_PATH = Path(r"C:\4.weekcover\data\retail")
-INVENTORY_DATA_PATH = Path(r"C:\4.weekcover\data\inventory")
-OUTPUT_PATH = Path(r"C:\4.weekcover\acc\public\data")
+RETAIL_DATA_PATH = Path(r"C:\3.accweekcover\data\retail")
+INVENTORY_DATA_PATH = Path(r"C:\3.accweekcover\data\inventory")
+OUTPUT_PATH = Path(__file__).parent.parent / "public" / "data"
 
 # 분석 기간
 ANALYSIS_MONTHS = [
@@ -306,9 +306,9 @@ def convert_sales_to_json_structure(agg_dict: Dict[Tuple, float], unexpected_cat
                     for op_group in ["core", "outlet"]:
                         key = (brand, item_tab, month, channel_group, op_group)
                         amount = agg_dict.get(key, 0.0)
-                        # M 단위로 변환 (1,000,000으로 나눔), 반올림하여 정수로
-                        amount_m = round(amount / 1_000_000)
-                        month_data[f"{channel_group}_{op_group}"] = amount_m
+                        # 원 단위로 저장 (나누기 제거)
+                        amount_won = round(amount)
+                        month_data[f"{channel_group}_{op_group}"] = amount_won
                 
                 result["brands"][brand][item_tab][month] = month_data
     
@@ -350,22 +350,22 @@ def convert_inventory_to_json_structure(
                 for op_group in ["core", "outlet"]:
                     key = (brand, item_tab, month, "전체", op_group)
                     amount = inv_agg_dict.get(key, 0.0)
-                    amount_m = round(amount / 1_000_000)
-                    month_data[f"전체_{op_group}"] = amount_m
+                    amount_won = round(amount)  # 원 단위로 저장
+                    month_data[f"전체_{op_group}"] = amount_won
                 
                 # 대리상재고 (FRS)
                 for op_group in ["core", "outlet"]:
                     key = (brand, item_tab, month, "FRS", op_group)
                     amount = inv_agg_dict.get(key, 0.0)
-                    amount_m = round(amount / 1_000_000)
-                    month_data[f"FRS_{op_group}"] = amount_m
+                    amount_won = round(amount)  # 원 단위로 저장
+                    month_data[f"FRS_{op_group}"] = amount_won
                 
                 # 본사재고 (HQ + OR)
                 for op_group in ["core", "outlet"]:
                     key = (brand, item_tab, month, "HQ_OR", op_group)
                     amount = inv_agg_dict.get(key, 0.0)
-                    amount_m = round(amount / 1_000_000)
-                    month_data[f"HQ_OR_{op_group}"] = amount_m
+                    amount_won = round(amount)  # 원 단위로 저장
+                    month_data[f"HQ_OR_{op_group}"] = amount_won
                 
                 # OR 판매매출 (직영재고 계산용) - 원 단위로 저장
                 for op_group in ["core", "outlet"]:

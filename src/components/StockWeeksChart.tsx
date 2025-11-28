@@ -65,7 +65,7 @@ const MONTHS_2025 = [
 const CHANNEL_LABELS: Record<ChannelTab, string> = {
   ALL: "전체",
   FRS: "대리상",
-  창고: "본사물류",
+  창고: "창고",
 };
 
 // 상품 타입 탭 타입
@@ -105,7 +105,8 @@ export default function StockWeeksChart({
     // 직영재고 계산 함수 (히트맵과 동일)
     const calculateRetailStock = (orSales: number) => {
       if (days === 0) return 0;
-      return (orSales / days) * 7 * stockWeek / 1_000_000; // M 단위로 변환
+      // 모든 데이터는 원 단위로 저장되어 있음
+      return (orSales / days) * 7 * stockWeek;
     };
 
     switch (channelTab) {
@@ -129,8 +130,8 @@ export default function StockWeeksChart({
           // 창고 주력: 전체 판매로 계산 (유지)
           salesCore: slsData.전체_core || 0,
           // 창고 아울렛: 직영판매(OR_sales)만 사용 (대리상판매 제외)
-          // OR_sales_outlet은 원 단위이므로 M 단위로 변환
-          salesOutlet: (invData.OR_sales_outlet || 0) / 1_000_000,
+          // 모든 데이터는 원 단위로 저장되어 있음
+          salesOutlet: invData.OR_sales_outlet || 0,
         };
       case "ALL":
       default:

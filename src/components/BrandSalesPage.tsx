@@ -196,36 +196,33 @@ export default function BrandSalesPage({ brand, title }: BrandSalesPageProps) {
                 {/* 재고주수 계산식 범례 */}
                 <div className="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
                   <h3 className="text-xs font-medium text-yellow-600 mb-2">📅 재고주수 계산식</h3>
-                  <div className="grid md:grid-cols-3 gap-2 text-xs">
+                  <div className="grid md:grid-cols-2 gap-4 text-xs">
                     <div>
-                      <span className="text-gray-500">전체주수:</span>{" "}
-                      <span className="text-gray-600">전체재고 ÷ (전체판매 ÷ 일수 × 7)</span>
+                      <div className="text-gray-600 space-y-1">
+                        <div>창고재고주수(전체) ÷ [(주력 대리상판매 + 주력 직영판매 + 아울렛 직영판매) ÷ 일수 × 7]</div>
+                        <div className="pl-2">ㄴ 주력 재고주수=창고 주력재고 ÷ [(주력 대리상판매 + 주력 직영판매) ÷ 일수 × 7)]</div>
+                        <div className="pl-2">ㄴ 아울렛 재고주수 = 창고 아울렛재고 ÷ (아울렛상품 직영판매 ÷ 일수 × 7)</div>
+                      </div>
                     </div>
-                    <div>
-                      <span className="text-gray-500">대리상주수:</span>{" "}
-                      <span className="text-gray-600">대리상재고 ÷ (대리상판매 ÷ 일수 × 7)</span>
-                    </div>
-                    <div>
-                      <span className="text-gray-500">본사물류주수:</span>{" "}
-                      <div className="text-gray-600 mt-1">
-                        <div>• 주력: 본사물류재고 ÷ (전체판매 ÷ 일수 × 7) * 전체판매=직영+대리상 *</div>
-                        <div>• 직영 아울렛: 본사재고 ÷ (직영판매 ÷ 일수 × 7)</div>
+                    <div className="space-y-2">
+                      <div>
+                        <span className="text-gray-600">전체주수 = 전체재고 ÷ (전체판매 ÷ 일수 × 7)</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-600">대리상주수 = 대리상재고 ÷ (대리상판매 ÷ 일수 × 7)</span>
                       </div>
                     </div>
                   </div>
-                </div>
-
-                {/* 주력/아울렛 분류 기준 */}
-                <div className="mt-2 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                  <h3 className="text-xs font-medium text-gray-600 mb-2">주력/아울렛 분류 기준</h3>
-                  <div className="grid md:grid-cols-2 gap-2 text-xs">
-                    <div>
-                      <span className="text-gray-500">주력상품:</span>{" "}
-                      <span className="text-gray-600">INTRO/FOCUS 또는 24FW~26SS 시즌</span>
-                    </div>
-                    <div>
-                      <span className="text-gray-500">아울렛상품:</span>{" "}
-                      <span className="text-gray-600">OUTLET/CARE/DONE 또는 기타</span>
+                  <div className="mt-4 pt-3 border-t border-gray-300">
+                    <div className="grid md:grid-cols-2 gap-4 text-xs">
+                      <div>
+                        <span className="text-gray-500 font-medium">주력상품 분류 기준:</span>{" "}
+                        <span className="text-gray-600">INTRO/FOCUS 또는 24FW~26SS 시즌</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-500 font-medium">아울렛 상품 분류 기준:</span>{" "}
+                        <span className="text-gray-600">OUTLET/CARE/DONE 또는 미지정에서 24FW이전시즌</span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -261,7 +258,7 @@ export default function BrandSalesPage({ brand, title }: BrandSalesPageProps) {
                     <span><span className="text-gray-400">전체판매:</span> FRS + OR</span>
                     <span><span className="text-gray-400">대리상판매:</span> Channel 2 = FRS</span>
                     <span><span className="text-gray-400">직영판매:</span> Channel 2 = OR</span>
-                    <span><span className="text-gray-400">금액 단위:</span> M (백만 위안)</span>
+                    <span><span className="text-gray-400">금액단위:</span> 1위안</span>
                   </>
                 }
               >
@@ -287,7 +284,7 @@ export default function BrandSalesPage({ brand, title }: BrandSalesPageProps) {
                     <span><span className="text-gray-400">전체재고:</span> FRS + HQ + OR</span>
                     <span><span className="text-gray-400">본사재고:</span> HQ + OR</span>
                     <span><span className="text-gray-400">직영재고:</span> OR판매 ÷ 일수 × 7 × {stockWeeks[selectedTab]}주</span>
-                    <span><span className="text-gray-400">본사물류재고:</span> 본사재고 - 직영재고</span>
+                    <span><span className="text-gray-400">창고재고:</span> 본사재고 - 직영재고</span>
                   </>
                 }
               >
