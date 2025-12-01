@@ -12,6 +12,7 @@ export interface SalesMonthData {
   FRS_outlet: number;
   OR_core: number;
   OR_outlet: number;
+  isForecast?: boolean; // forecast 데이터 여부 플래그
 }
 
 // 판매 아이템 탭별 데이터 구조

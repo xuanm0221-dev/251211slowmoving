@@ -9,6 +9,7 @@ interface CollapsibleSectionProps {
   children: ReactNode;
   defaultOpen?: boolean;
   legend?: ReactNode;
+  headerAction?: ReactNode; // 헤더 우측에 표시할 액션 요소
 }
 
 export default function CollapsibleSection({
@@ -18,6 +19,7 @@ export default function CollapsibleSection({
   children,
   defaultOpen = true,
   legend,
+  headerAction,
 }: CollapsibleSectionProps) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
 
@@ -55,6 +57,11 @@ export default function CollapsibleSection({
               </svg>
             </div>
           </button>
+          {headerAction && (
+            <div onClick={(e) => e.stopPropagation()}>
+              {headerAction}
+            </div>
+          )}
         </div>
         
         {/* 범례 - 항상 보임 */}

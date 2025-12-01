@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { 
   Brand, 
   SalesBrandData, 
@@ -23,6 +23,7 @@ import InventoryChart from "./InventoryChart";
 import WarningBanner from "./WarningBanner";
 import StockWeekInput from "./StockWeekInput";
 import CollapsibleSection from "./CollapsibleSection";
+import { generateForecastForBrand } from "@/lib/forecast";
 
 interface BrandSalesPageProps {
   brand: Brand;
@@ -38,6 +39,7 @@ export default function BrandSalesPage({ brand, title }: BrandSalesPageProps) {
   const [stockWeeks, setStockWeeks] = useState<StockWeeksByItem>(createDefaultStockWeeks());
   const [showAllItemsInChart, setShowAllItemsInChart] = useState(false); // 차트 모두선택 모드
   const [channelTab, setChannelTab] = useState<ChannelTab>("ALL"); // 채널 탭 (ALL, FRS, 창고)
+  const [growthRate, setGrowthRate] = useState<number>(105); // 성장률 (기본값 105%)
   
   // 특정 아이템의 stockWeek 변경 핸들러
   const handleStockWeekChange = (itemTab: ItemTab, value: number) => {
@@ -86,7 +88,15 @@ export default function BrandSalesPage({ brand, title }: BrandSalesPageProps) {
     fetchData();
   }, []);
 
-  const salesBrandData: SalesBrandData | undefined = salesData?.brands[brand];
+  // 원본 브랜드 데이터
+  const originalSalesBrandData: SalesBrandData | undefined = salesData?.brands[brand];
+  
+  // Forecast가 포함된 브랜드 데이터
+  const salesBrandData: SalesBrandData | undefined = useMemo(() => {
+    if (!originalSalesBrandData) return undefined;
+    return generateForecastForBrand(originalSalesBrandData, growthRate);
+  }, [originalSalesBrandData, growthRate]);
+
   const salesTabData = salesBrandData?.[selectedTab];
 
   const inventoryBrandData: InventoryBrandData | undefined = inventoryData?.brands[brand];
@@ -96,6 +106,31 @@ export default function BrandSalesPage({ brand, title }: BrandSalesPageProps) {
     ...(salesData?.unexpectedCategories || []),
     ...(inventoryData?.unexpectedCategories || [])
   ].filter((v, i, a) => a.indexOf(v) === i);
+
+  // months 배열에 forecast 월 추가
+  const allMonths = useMemo(() => {
+    if (!salesData?.months) return [];
+    const monthsSet = new Set(salesData.months);
+    
+    // Forecast 월 추가
+    if (salesBrandData) {
+      Object.values(salesBrandData).forEach((itemData) => {
+        Object.keys(itemData).forEach((month) => {
+          if (itemData[month]?.isForecast) {
+            monthsSet.add(month);
+          }
+        });
+      });
+    }
+    
+    // 월 정렬 (YYYY.MM 형식 기준)
+    return Array.from(monthsSet).sort((a, b) => {
+      const [yearA, monthA] = a.split(".").map(Number);
+      const [yearB, monthB] = b.split(".").map(Number);
+      if (yearA !== yearB) return yearA - yearB;
+      return monthA - monthB;
+    });
+  }, [salesData?.months, salesBrandData]);
 
   return (
     <>
@@ -261,9 +296,29 @@ export default function BrandSalesPage({ brand, title }: BrandSalesPageProps) {
                     <span><span className="text-gray-400">금액단위:</span> 1위안</span>
                   </>
                 }
+                headerAction={
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm text-gray-600 whitespace-nowrap">
+                      성장률(전년동월 대비, %):
+                    </label>
+                    <input
+                      type="number"
+                      value={growthRate}
+                      onChange={(e) => {
+                        const value = parseFloat(e.target.value);
+                        if (!isNaN(value) && value > 0) {
+                          setGrowthRate(value);
+                        }
+                      }}
+                      className="w-20 px-2 py-1 border border-gray-300 rounded text-sm"
+                      min="1"
+                      step="0.1"
+                    />
+                  </div>
+                }
               >
-                {salesTabData && salesData?.months ? (
-                  <SalesTable data={salesTabData} months={salesData.months} />
+                {salesTabData && allMonths.length > 0 ? (
+                  <SalesTable data={salesTabData} months={allMonths} />
                 ) : (
                   <div className="flex items-center justify-center py-10">
                     <p className="text-gray-500">판매 데이터가 없습니다.</p>

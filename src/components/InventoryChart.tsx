@@ -61,6 +61,99 @@ const CHANNEL_LABELS: Record<ChannelTab, string> = {
   창고: "창고",
 };
 
+// 커스텀 Tooltip 컴포넌트
+interface TooltipProps {
+  active?: boolean;
+  payload?: Array<{
+    dataKey: string;
+    value: number;
+    name: string;
+    payload: {
+      month: string;
+      "0_재고자산_주력": number;
+      "0_재고자산_아울렛": number;
+      "1_판매매출_주력": number;
+      "1_판매매출_아울렛": number;
+    };
+  }>;
+}
+
+const CustomTooltip = ({ active, payload }: TooltipProps) => {
+  if (!active || !payload || payload.length === 0) {
+    return null;
+  }
+
+  // 데이터 추출
+  const data = payload[0]?.payload;
+  if (!data) return null;
+
+  const inventoryCore = data["0_재고자산_주력"] || 0;
+  const inventoryOutlet = data["0_재고자산_아울렛"] || 0;
+  const salesCore = data["1_판매매출_주력"] || 0;
+  const salesOutlet = data["1_판매매출_아울렛"] || 0;
+
+  // 비중 계산
+  const inventoryTotal = inventoryCore + inventoryOutlet;
+  const salesTotal = salesCore + salesOutlet;
+
+  const inventoryCorePercent = inventoryTotal > 0 
+    ? ((inventoryCore / inventoryTotal) * 100).toFixed(1) 
+    : "0.0";
+  const inventoryOutletPercent = inventoryTotal > 0 
+    ? ((inventoryOutlet / inventoryTotal) * 100).toFixed(1) 
+    : "0.0";
+  const salesCorePercent = salesTotal > 0 
+    ? ((salesCore / salesTotal) * 100).toFixed(1) 
+    : "0.0";
+  const salesOutletPercent = salesTotal > 0 
+    ? ((salesOutlet / salesTotal) * 100).toFixed(1) 
+    : "0.0";
+
+  // 포맷팅
+  const formatValue = (value: number) => {
+    const roundedValue = Math.round(value / 1_000_000);
+    return roundedValue.toLocaleString() + "M";
+  };
+
+  return (
+    <div className="bg-white border border-gray-200 rounded-lg p-3 text-xs shadow-lg">
+      <div className="font-bold text-gray-800 mb-2">
+        {data.month}
+      </div>
+      <div className="flex flex-col gap-1.5">
+        <div className="flex items-center gap-2">
+          <div 
+            className="w-3 h-3 rounded" 
+            style={{ backgroundColor: COLORS.curr_outlet }}
+          ></div>
+          <span>25년 재고자산 아울렛: {formatValue(inventoryOutlet)} ({inventoryOutletPercent}%)</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div 
+            className="w-3 h-3 rounded" 
+            style={{ backgroundColor: COLORS.curr_core }}
+          ></div>
+          <span>25년 재고자산 주력: {formatValue(inventoryCore)} ({inventoryCorePercent}%)</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div 
+            className="w-3 h-3 rounded" 
+            style={{ backgroundColor: COLORS.prev_outlet }}
+          ></div>
+          <span>25년 판매매출 아울렛: {formatValue(salesOutlet)} ({salesOutletPercent}%)</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div 
+            className="w-3 h-3 rounded" 
+            style={{ backgroundColor: COLORS.prev_core }}
+          ></div>
+          <span>25년 판매매출 주력: {formatValue(salesCore)} ({salesCorePercent}%)</span>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export default function InventoryChart({
   selectedTab,
   inventoryBrandData,
@@ -239,16 +332,7 @@ export default function InventoryChart({
               }}
             />
             <Tooltip 
-              contentStyle={{ 
-                backgroundColor: "white", 
-                border: "1px solid #e5e7eb",
-                borderRadius: "8px",
-                fontSize: "12px"
-              }}
-              formatter={(value: number, name: string) => {
-                const formattedValue = (value / 1_000_000).toLocaleString() + "M";
-                return [formattedValue, name];
-              }}
+              content={<CustomTooltip />}
             />
             <Legend 
               wrapperStyle={{ fontSize: "12px" }}
