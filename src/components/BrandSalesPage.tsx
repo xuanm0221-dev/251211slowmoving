@@ -71,17 +71,17 @@ export default function BrandSalesPage({ brand, title }: BrandSalesPageProps) {
         const inventoryJson: InventorySummaryData = await inventoryResponse.json();
         setInventoryData(inventoryJson);
 
-        // 입고예정 재고자산 데이터 로드 (존재하지 않으면 경고만 출력)
+        // 입고예정 재고자산 데이터 로드 (실적 데이터와 동일하게 JSON 파일에서 읽기)
         try {
-          const forecastRes = await fetch("/api/forecast-inventory");
-          if (forecastRes.ok) {
-            const forecastJson: ForecastInventorySummaryData = await forecastRes.json();
+          const forecastResponse = await fetch("/data/accessory_forecast_inventory_summary.json");
+          if (forecastResponse.ok) {
+            const forecastJson: ForecastInventorySummaryData = await forecastResponse.json();
             setForecastInventoryData(forecastJson);
           } else {
             console.warn("입고예정 재고자산 데이터를 불러오는데 실패했습니다.");
           }
         } catch (e) {
-          console.warn("입고예정 재고자산 API 호출 중 오류:", e);
+          console.warn("입고예정 재고자산 데이터 로드 중 오류:", e);
         }
 
         if (salesJson.unexpectedCategories?.length > 0) {
