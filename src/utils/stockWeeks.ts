@@ -98,6 +98,20 @@ export function computeStockWeeksForRowType(
 
   // 윈도우(1/2/3개월)에 따른 매출/일수 집계
   const windowMonths = getWindowMonths(month, stockWeekWindow);
+  
+  // 2024년 1월만 특별 처리: 2개월/3개월 선택 시 데이터가 있는 월만 사용
+  let monthsToUse = windowMonths;
+  if (month === "2024.01" && stockWeekWindow > 1) {
+    // 실제 데이터가 있는 월만 필터링
+    monthsToUse = windowMonths.filter(m => 
+      salesData[m] !== undefined && inventoryData[m] !== undefined
+    );
+    // 사용 가능한 월이 없으면 해당 월만 사용
+    if (monthsToUse.length === 0) {
+      monthsToUse = [month];
+    }
+  }
+  
   let totalSalesWindow = 0;        // 전체주수용 전체 매출 (전체 필드 + 없는 경우 core+outlet)
   let totalSalesCoreWindow = 0;    // 주력행용
   let totalSalesOutletWindow = 0;  // 아울렛행용
@@ -107,7 +121,7 @@ export function computeStockWeeksForRowType(
   let orSalesOutletWindow = 0;
   let daysWindow = 0;
 
-  windowMonths.forEach((m) => {
+  monthsToUse.forEach((m) => {
     const sd = salesData[m];
     const id = inventoryData[m];
     const d = daysInMonth[m] || getDaysInMonthFromYm(m);
