@@ -116,19 +116,34 @@ export default function Home() {
 
         {/* 안내 메시지 */}
         <div className="mt-12 p-6 bg-blue-900/20 border border-blue-700/30 rounded-xl text-center">
-          <p className="text-gray-900">
+          <p className="text-gray-900 mb-4">
             💡 데이터가 표시되지 않는 경우, 전처리 스크립트를 먼저 실행해주세요:
           </p>
-          <div className="mt-4 flex flex-col items-center gap-2">
-            <code className="px-4 py-2 bg-gray-900 rounded-lg text-gray-300 font-mono text-sm">
-              python scripts/preprocess_sales.py
-            </code>
-            <code className="px-4 py-2 bg-gray-900 rounded-lg text-gray-300 font-mono text-sm">
-              python scripts/preprocess_inventory.py
-            </code>
-            <code className="px-4 py-2 bg-gray-900 rounded-lg text-gray-300 font-mono text-sm">
-              python scripts/preprocess_forecast_inventory.py
-            </code>
+          <div className="mt-4 flex flex-col items-center gap-3">
+            <div className="flex flex-col items-center gap-1">
+              <code className="px-4 py-2 bg-gray-900 rounded-lg text-gray-300 font-mono text-sm">
+                python scripts/preprocess_sales.py
+              </code>
+              <span className="text-xs text-gray-500">판매매출 및 재고자산 데이터 전처리</span>
+            </div>
+            <div className="flex flex-col items-center gap-1">
+              <code className="px-4 py-2 bg-gray-900 rounded-lg text-gray-300 font-mono text-sm">
+                python scripts/preprocess_inventory.py
+              </code>
+              <span className="text-xs text-gray-500">재고자산 데이터 전처리</span>
+            </div>
+            <div className="flex flex-col items-center gap-1">
+              <code className="px-4 py-2 bg-gray-900 rounded-lg text-gray-300 font-mono text-sm">
+                python scripts/preprocess_forecast_inventory.py
+              </code>
+              <span className="text-xs text-gray-500">입고예정 재고자산 데이터 전처리</span>
+            </div>
+            <div className="flex flex-col items-center gap-1">
+              <code className="px-4 py-2 bg-gray-900 rounded-lg text-gray-300 font-mono text-sm">
+                python scripts/preprocess_actual_arrival.py
+              </code>
+              <span className="text-xs text-gray-500">실제 입고 재고자산 데이터 전처리</span>
+            </div>
           </div>
         </div>
       </main>
