@@ -31,6 +31,7 @@ import CollapsibleSection from "./CollapsibleSection";
 import ForecastInventoryTable from "./ForecastInventoryTable";
 import InventoryStockSummaryTable from "./InventoryStockSummaryTable";
 import ActualArrivalTable from "./ActualArrivalTable";
+import StagnantStockAnalysis from "./StagnantStockAnalysis";
 import { generateForecastForBrand } from "@/lib/forecast";
 import { buildInventoryForecastForTab } from "@/lib/inventoryForecast";
 import { computeStockWeeksForChart, StockWeeksChartPoint, ProductTypeTab } from "@/utils/stockWeeks";
@@ -371,75 +372,82 @@ export default function BrandSalesPage({ brand, title }: BrandSalesPageProps) {
               </div>
             )}
 
-            {/* 2. 2025년 재고주수 표 */}
+            {/* 1.8. 정체재고 분석 */}
+            <StagnantStockAnalysis brand={brand} />
+
+            {/* 2. 재고주수 히트맵 (2025년, 2024년) */}
             {salesTabData && inventoryTabDataWithForecast && inventoryData?.daysInMonth && (
-              <div className="card mb-4">
-                <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-                  <span className="text-yellow-500">📅</span>
-                  2025년 재고주수
-                </h2>
-                <StockWeeksTable
-                  inventoryData={inventoryTabDataWithForecast}
-                  salesData={salesTabData}
-                  daysInMonth={inventoryData.daysInMonth}
-                  stockWeek={stockWeeks[selectedTab]}
-                  year="2025"
-                  stockWeekWindow={stockWeekWindow}
-                  productTypeTab={productTypeTab}
-                />
-
-                {/* 재고주수 계산식 범례 */}
-                <div className="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                  <h3 className="text-xs font-medium text-yellow-600 mb-2">📅 재고주수 계산식</h3>
-                  <div className="grid md:grid-cols-2 gap-4 text-xs">
-                    <div className="space-y-2">
-                      <div>
-                        <span className="text-gray-600">1. 전체주수 = 전체재고 ÷ (전체판매 ÷ 일수 × 7)</span>
-                      </div>
-                      <div>
-                        <span className="text-gray-600">2. 대리상주수 = 대리상재고 ÷ (대리상판매 ÷ 일수 × 7)</span>
-                      </div>
-                    </div>
-                    <div>
-                      <div className="text-gray-600 space-y-1">
-                        <div>3. 창고재고주수(전체)=창고재고(전체) ÷ [(주력 대리상판매 + 주력 직영판매 + 아울렛 직영판매) ÷ 일수 × 7]</div>
-                        <div className="pl-2">ㄴ 주력 재고주수=창고 주력재고 ÷ [(주력 대리상판매 + 주력 직영판매) ÷ 일수 × 7)]</div>
-                        <div className="pl-2">ㄴ 아울렛 재고주수 = 창고 아울렛재고 ÷ (아울렛상품 직영판매 ÷ 일수 × 7)</div>
-                      </div>
-                    </div>
+              <div className="mb-4">
+                <CollapsibleSection
+                  title="재고주수 히트맵"
+                  icon="📅"
+                  iconColor="text-yellow-500"
+                  defaultOpen={false}
+                >
+                  {/* 2025년 재고주수 */}
+                  <div className="mb-6">
+                    <h3 className="text-lg font-semibold text-gray-700 mb-3">2025년 재고주수</h3>
+                    <StockWeeksTable
+                      inventoryData={inventoryTabDataWithForecast}
+                      salesData={salesTabData}
+                      daysInMonth={inventoryData.daysInMonth}
+                      stockWeek={stockWeeks[selectedTab]}
+                      year="2025"
+                      stockWeekWindow={stockWeekWindow}
+                      productTypeTab={productTypeTab}
+                    />
                   </div>
-                  <div className="mt-4 pt-3 border-t border-gray-300">
+
+                  {/* 재고주수 계산식 범례 */}
+                  <div className="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                    <h3 className="text-xs font-medium text-yellow-600 mb-2">📅 재고주수 계산식</h3>
                     <div className="grid md:grid-cols-2 gap-4 text-xs">
-                      <div>
-                        <span className="text-gray-500 font-medium">주력상품 분류 기준:</span>{" "}
-                        <span className="text-gray-600">INTRO/FOCUS 또는 24FW~26SS 시즌</span>
+                      <div className="space-y-2">
+                        <div>
+                          <span className="text-gray-600">1. 전체주수 = 전체재고 ÷ (전체판매 ÷ 일수 × 7)</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-600">2. 대리상주수 = 대리상재고 ÷ (대리상판매 ÷ 일수 × 7)</span>
+                        </div>
                       </div>
                       <div>
-                        <span className="text-gray-500 font-medium">아울렛 상품 분류 기준:</span>{" "}
-                        <span className="text-gray-600">OUTLET/CARE/DONE 또는 미지정에서 24FW이전시즌</span>
+                        <div className="text-gray-600 space-y-1">
+                          <div>3. 창고재고주수(전체)=창고재고(전체) ÷ [(주력 대리상판매 + 주력 직영판매 + 아울렛 직영판매) ÷ 일수 × 7]</div>
+                          <div className="pl-2">ㄴ 주력 재고주수=창고 주력재고 ÷ [(주력 대리상판매 + 주력 직영판매) ÷ 일수 × 7)]</div>
+                          <div className="pl-2">ㄴ 아울렛 재고주수 = 창고 아울렛재고 ÷ (아울렛상품 직영판매 ÷ 일수 × 7)</div>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="mt-4 pt-3 border-t border-gray-300">
+                      <div className="grid md:grid-cols-2 gap-4 text-xs">
+                        <div>
+                          <span className="text-gray-500 font-medium">주력상품 분류 기준:</span>{" "}
+                          <span className="text-gray-600">INTRO/FOCUS 또는 24FW~26SS 시즌</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-500 font-medium">아울렛 상품 분류 기준:</span>{" "}
+                          <span className="text-gray-600">OUTLET/CARE/DONE 또는 미지정에서 24FW이전시즌</span>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              </div>
-            )}
 
-            {/* 3. 2024년 재고주수 표 */}
-            {salesTabData && inventoryTabData && inventoryData?.daysInMonth && (
-              <div className="card mb-6">
-                <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-                  <span className="text-yellow-500">📅</span>
-                  2024년 재고주수
-                </h2>
-                <StockWeeksTable
-                  inventoryData={inventoryTabData}
-                  salesData={salesTabData}
-                  daysInMonth={inventoryData.daysInMonth}
-                  stockWeek={stockWeeks[selectedTab]}
-                  year="2024"
-                  stockWeekWindow={stockWeekWindow}
-                  productTypeTab={productTypeTab}
-                />
+                  {/* 2024년 재고주수 */}
+                  {salesTabData && inventoryTabData && inventoryData?.daysInMonth && (
+                    <div className="mt-6">
+                      <h3 className="text-lg font-semibold text-gray-700 mb-3">2024년 재고주수</h3>
+                      <StockWeeksTable
+                        inventoryData={inventoryTabData}
+                        salesData={salesTabData}
+                        daysInMonth={inventoryData.daysInMonth}
+                        stockWeek={stockWeeks[selectedTab]}
+                        year="2024"
+                        stockWeekWindow={stockWeekWindow}
+                        productTypeTab={productTypeTab}
+                      />
+                    </div>
+                  )}
+                </CollapsibleSection>
               </div>
             )}
 
