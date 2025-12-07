@@ -16,12 +16,17 @@ import type {
 import { DIMENSION_TABS, BRAND_CODE_MAP, STAGNANT_CHANNEL_TABS } from "@/types/stagnantStock";
 import CollapsibleSection from "./CollapsibleSection";
 
+// 아이템 필터 탭 타입
+type ItemFilterTab = "ACC합계" | "신발" | "모자" | "가방" | "기타";
+
 interface StagnantStockAnalysisProps {
   brand: Brand;
   dimensionTab?: DimensionTab;
   onDimensionTabChange?: (tab: DimensionTab) => void;
   thresholdPct?: number;
   onThresholdPctChange?: (pct: number) => void;
+  itemTab?: ItemFilterTab;
+  onItemTabChange?: (tab: ItemFilterTab) => void;
 }
 
 // 숫자 포맷팅 함수
@@ -495,6 +500,8 @@ export default function StagnantStockAnalysis({
   onDimensionTabChange,
   thresholdPct: externalThresholdPct,
   onThresholdPctChange,
+  itemTab: externalItemTab,
+  onItemTabChange,
 }: StagnantStockAnalysisProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -533,9 +540,18 @@ export default function StagnantStockAnalysis({
   });
 
   // 아이템 탭 상태 (ACC합계, 신발, 모자, 가방, 기타)
-  type ItemFilterTab = "ACC합계" | "신발" | "모자" | "가방" | "기타";
-  const [itemTab, setItemTab] = useState<ItemFilterTab>("ACC합계");
+  const [internalItemTab, setInternalItemTab] = useState<ItemFilterTab>("ACC합계");
   const ITEM_FILTER_TABS: ItemFilterTab[] = ["ACC합계", "신발", "모자", "가방", "기타"];
+  
+  // itemTab도 외부에서 제어되면 외부 값 사용
+  const itemTab = externalItemTab ?? internalItemTab;
+  const setItemTab = (tab: ItemFilterTab) => {
+    if (onItemTabChange) {
+      onItemTabChange(tab);
+    } else {
+      setInternalItemTab(tab);
+    }
+  };
 
   // 채널 탭 상태 (전체, FR, OR)
   const [channelTab, setChannelTab] = useState<StagnantChannelTab>("전체");
@@ -852,25 +868,6 @@ export default function StagnantStockAnalysis({
                 </div>
               </div>
 
-              {/* 아이템 필터 탭 */}
-              <div className="flex flex-col gap-1">
-                <label className="text-sm font-medium text-gray-700">아이템</label>
-                <div className="flex rounded-lg border border-gray-300 overflow-hidden">
-                  {ITEM_FILTER_TABS.map(tab => (
-                    <button
-                      key={tab}
-                      onClick={() => setItemTab(tab)}
-                      className={`px-3 py-2 text-sm font-medium transition-colors ${
-                        itemTab === tab
-                          ? "bg-orange-500 text-white"
-                          : "bg-white text-gray-700 hover:bg-gray-100"
-                      }`}
-                    >
-                      {tab}
-                    </button>
-                  ))}
-                </div>
-              </div>
             </div>
 
             {/* 오른쪽: 메타 정보 */}

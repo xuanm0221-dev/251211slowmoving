@@ -7,6 +7,9 @@ type SeasonGroup = "정체재고" | "당시즌" | "차기시즌" | "과시즌";
 // 분석 단위 타입
 type DimensionTab = "스타일" | "컬러" | "사이즈" | "컬러&사이즈";
 
+// 아이템 필터 타입
+type ItemFilterTab = "ACC합계" | "신발" | "모자" | "가방" | "기타";
+
 // 단위 탭별 KEY 컬럼 매핑
 const DIMENSION_KEY_MAP: Record<DimensionTab, { stockKey: string; salesKey: string }> = {
   "스타일": {
@@ -67,7 +70,8 @@ function buildMonthlyStockQuery(
   thresholdRatio: number,
   currentYear: string,
   nextYear: string,
-  dimensionTab: DimensionTab = "스타일"
+  dimensionTab: DimensionTab = "스타일",
+  itemFilter: ItemFilterTab = "ACC합계"
 ): string {
   // 전년 시즌 구분용: 2024년이면 당시즌=24*, 차기=25*, 2025년이면 당시즌=25*, 차기=26*
   const yearShort = yearPrefix.slice(-2); // "24" or "25"
@@ -75,6 +79,11 @@ function buildMonthlyStockQuery(
   
   // 분석단위별 dimension key
   const dimConfig = DIMENSION_KEY_MAP[dimensionTab];
+  
+  // 아이템 필터 조건 생성
+  const itemFilterCondition = itemFilter === "ACC합계" 
+    ? "" 
+    : ` AND mid_category_kr = '${itemFilter}'`;
 
   return `
     WITH 
@@ -188,6 +197,7 @@ function buildMonthlyStockQuery(
       SUM(stock_amt) AS stock_amt,
       SUM(sales_amt) AS sales_amt
     FROM with_season_group
+    WHERE 1=1${itemFilterCondition}
     GROUP BY month, season_group
     ORDER BY month, season_group
   `;
@@ -243,7 +253,7 @@ export default async function handler(
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const { brand, thresholdPct, dimensionTab } = req.query;
+  const { brand, thresholdPct, dimensionTab, itemFilter } = req.query;
 
   // 파라미터 검증
   if (!brand || typeof brand !== "string") {
@@ -253,17 +263,18 @@ export default async function handler(
   const threshold = parseFloat(thresholdPct as string) || 0.01;
   const thresholdRatio = threshold / 100; // 0.01% → 0.0001
   const dimTab = (dimensionTab as DimensionTab) || "스타일";
+  const itemTab = (itemFilter as ItemFilterTab) || "ACC합계";
 
   const { currentYear, nextYear } = getYearConfig();
 
   try {
     // 2024년 데이터 조회
-    const query2024 = buildMonthlyStockQuery(brand, "2024", thresholdRatio, "24", "25", dimTab);
+    const query2024 = buildMonthlyStockQuery(brand, "2024", thresholdRatio, "24", "25", dimTab, itemTab);
     const result2024 = await runQuery(query2024);
     const data2024 = transformResults(result2024);
 
     // 2025년 데이터 조회
-    const query2025 = buildMonthlyStockQuery(brand, "2025", thresholdRatio, "25", "26", dimTab);
+    const query2025 = buildMonthlyStockQuery(brand, "2025", thresholdRatio, "25", "26", dimTab, itemTab);
     const result2025 = await runQuery(query2025);
     const data2025 = transformResults(result2025);
 

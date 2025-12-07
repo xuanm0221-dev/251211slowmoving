@@ -19,12 +19,20 @@ import type { Brand } from "@/types/sales";
 import { BRAND_CODE_MAP, DIMENSION_TABS } from "@/types/stagnantStock";
 import type { DimensionTab } from "@/types/stagnantStock";
 
+// 아이템 필터 타입
+type ItemFilterTab = "ACC합계" | "신발" | "모자" | "가방" | "기타";
+
 interface InventorySeasonChartProps {
   brand: Brand;
   dimensionTab?: DimensionTab;
   onDimensionTabChange?: (tab: DimensionTab) => void;
   thresholdPct?: number;
+  itemTab?: ItemFilterTab;
+  onItemTabChange?: (tab: ItemFilterTab) => void;
 }
+
+// 아이템 필터 탭 목록
+const ITEM_FILTER_TABS: ItemFilterTab[] = ["ACC합계", "신발", "모자", "가방", "기타"];
 
 // 시즌 그룹 타입
 type SeasonGroup = "정체재고" | "당시즌" | "차기시즌" | "과시즌";
@@ -288,7 +296,7 @@ const SalesTooltip = ({ active, payload, label, data2024, data2025 }: SalesToolt
 // 데이터 기준월 제한 상수 (2025년 11월까지만 표시)
 const MAX_MONTH = "202511";
 
-export default function InventorySeasonChart({ brand, dimensionTab = "스타일", onDimensionTabChange, thresholdPct = 0.01 }: InventorySeasonChartProps) {
+export default function InventorySeasonChart({ brand, dimensionTab = "스타일", onDimensionTabChange, thresholdPct = 0.01, itemTab = "ACC합계", onItemTabChange }: InventorySeasonChartProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<InventorySeasonChartResponse | null>(null);
@@ -296,7 +304,7 @@ export default function InventorySeasonChart({ brand, dimensionTab = "스타일"
 
   const brandCode = BRAND_CODE_MAP[brand] || "M";
 
-  // 데이터 로드 (dimensionTab 또는 thresholdPct 변경 시 다시 로드)
+  // 데이터 로드 (dimensionTab, thresholdPct, itemTab 변경 시 다시 로드)
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
@@ -306,6 +314,7 @@ export default function InventorySeasonChart({ brand, dimensionTab = "스타일"
           brand: brandCode,
           thresholdPct: String(thresholdPct),
           dimensionTab: dimensionTab,
+          itemFilter: itemTab,
         });
         const response = await fetch(`/api/inventory-season-chart?${params}`);
         if (!response.ok) {
@@ -320,7 +329,7 @@ export default function InventorySeasonChart({ brand, dimensionTab = "스타일"
       }
     };
     fetchData();
-  }, [brandCode, dimensionTab, thresholdPct]);
+  }, [brandCode, dimensionTab, thresholdPct, itemTab]);
 
   // 차트 데이터 생성
   const chartData = useMemo(() => {
@@ -601,6 +610,25 @@ export default function InventorySeasonChart({ brand, dimensionTab = "스타일"
                   className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all duration-200 ${
                     dimensionTab === tab
                       ? "bg-white text-gray-900 shadow-sm"
+                      : "text-gray-600 hover:text-gray-900"
+                  }`}
+                >
+                  {tab}
+                </button>
+              ))}
+            </div>
+          )}
+          
+          {/* 아이템 필터 탭 */}
+          {onItemTabChange && (
+            <div className="flex p-1 bg-gray-100 rounded-lg">
+              {ITEM_FILTER_TABS.map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => onItemTabChange(tab)}
+                  className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all duration-200 ${
+                    itemTab === tab
+                      ? "bg-orange-500 text-white shadow-sm"
                       : "text-gray-600 hover:text-gray-900"
                   }`}
                 >

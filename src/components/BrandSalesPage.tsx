@@ -59,6 +59,7 @@ export default function BrandSalesPage({ brand, title }: BrandSalesPageProps) {
   const [productTypeTab, setProductTypeTab] = useState<ProductTypeTab>("전체"); // 상품 타입 탭 (전체/주력/아울렛)
   const [stagnantDimensionTab, setStagnantDimensionTab] = useState<DimensionTab>("컬러&사이즈"); // 정체재고 분석 단위
   const [stagnantThresholdPct, setStagnantThresholdPct] = useState<number>(0.01); // 정체재고 기준 %
+  const [stagnantItemTab, setStagnantItemTab] = useState<"ACC합계" | "신발" | "모자" | "가방" | "기타">("ACC합계"); // 정체재고 아이템 필터
   
   // 특정 아이템의 stockWeek 변경 핸들러
   const handleStockWeekChange = (itemTab: ItemTab, value: number) => {
@@ -382,6 +383,8 @@ export default function BrandSalesPage({ brand, title }: BrandSalesPageProps) {
               dimensionTab={stagnantDimensionTab} 
               onDimensionTabChange={setStagnantDimensionTab}
               thresholdPct={stagnantThresholdPct}
+              itemTab={stagnantItemTab}
+              onItemTabChange={setStagnantItemTab}
             />
 
             {/* 1.8. 정체재고 분석 */}
@@ -391,6 +394,8 @@ export default function BrandSalesPage({ brand, title }: BrandSalesPageProps) {
               onDimensionTabChange={setStagnantDimensionTab}
               thresholdPct={stagnantThresholdPct}
               onThresholdPctChange={setStagnantThresholdPct}
+              itemTab={stagnantItemTab}
+              onItemTabChange={setStagnantItemTab}
             />
 
             {/* 2. 재고주수 히트맵 (2025년, 2024년) */}
