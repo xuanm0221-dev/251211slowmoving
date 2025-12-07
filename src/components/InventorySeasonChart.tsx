@@ -601,10 +601,10 @@ export default function InventorySeasonChart({ brand, dimensionTab = "스타일"
               axisLine={{ stroke: "#d1d5db" }}
               tickFormatter={(value) => value.slice(5)} // "2025-01" -> "01"
             />
-            {/* 재고금액용 Y축 (오른쪽) */}
+            {/* 재고금액용 Y축 - 전년대비:왼쪽, 매출액대비:오른쪽 */}
             <YAxis 
               yAxisId="inventory"
-              orientation="right"
+              orientation={mode === "전년대비" ? "left" : "right"}
               tick={{ fontSize: 11, fill: "#6b7280" }}
               axisLine={{ stroke: "#d1d5db" }}
               tickFormatter={formatYAxis}
