@@ -31,8 +31,10 @@ export default function InventoryTable({ data, months, daysInMonth, stockWeek }:
     // 모든 재고 데이터는 원 단위로 저장되어 있음
     const hqOrCoreWon = monthData.HQ_OR_core || 0;
     const hqOrOutletWon = monthData.HQ_OR_outlet || 0;
+    // 주력: 본사재고 - 직영판매예정 = 창고재고
     const warehouseStockCore = hqOrCoreWon - retailStockCore;
-    const warehouseStockOutlet = hqOrOutletWon - retailStockOutlet;
+    // 아울렛: 본사재고 전체 = 창고재고 (직영판매예정 차감 안함)
+    const warehouseStockOutlet = hqOrOutletWon;
 
     if (dataKey === "전체") {
       // 예상 구간: 전체 필드가 있으면 그것을 사용 (주력/아울렛 구분 없음)

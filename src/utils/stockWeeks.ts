@@ -172,8 +172,10 @@ export function computeStockWeeksForRowType(
   const retailStockCore = calculateRetailStock(orSalesCore);
   const retailStockOutlet = calculateRetailStock(orSalesOutlet);
 
+  // 주력: 본사재고 - 직영판매예정 = 창고재고
   const warehouseStockCore = hqOrStockCore - retailStockCore;
-  const warehouseStockOutlet = hqOrStockOutlet - retailStockOutlet;
+  // 아울렛: 본사재고 전체 = 창고재고 (직영판매예정 차감 안함)
+  const warehouseStockOutlet = hqOrStockOutlet;
 
   const totalSalesCore = totalSalesCoreWindow;
   const totalSalesOutlet = totalSalesOutletWindow;

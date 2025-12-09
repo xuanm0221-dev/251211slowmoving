@@ -93,7 +93,7 @@ function SummaryBox({ data, isTotal = false }: { data: SummaryBoxData; isTotal?:
             <tr className="border-b border-gray-300">
               <th className="text-left py-2 px-2 font-medium text-gray-600">구분</th>
               <th className="text-right py-2 px-2 font-medium text-gray-600">재고금액</th>
-              <th className="text-right py-2 px-2 font-medium text-gray-600">전체대비 %</th>
+              <th className="text-right py-2 px-2 font-medium text-gray-600">%</th>
               <th className="text-right py-2 px-2 font-medium text-gray-600">재고수량</th>
               <th className="text-right py-2 px-2 font-medium text-gray-600">품번수</th>
               <th className="text-right py-2 px-2 font-medium text-gray-600">매출금액</th>
@@ -1010,9 +1010,22 @@ export default function StagnantStockAnalysis({
                     };
                   };
                   
+                  // 전체재고 요약: 각 아이템을 100%로 표시 (정체+정상=100%가 맞물리도록)
+                  const recalcTotalSummary = (summary: SummaryBoxData): SummaryBoxData => {
+                    const newCategories = summary.categories.map(cat => ({
+                      ...cat,
+                      stock_amt_pct: 100,
+                    }));
+                    return {
+                      ...summary,
+                      categories: newCategories,
+                      total: newCategories.find(c => c.category === "전체")!,
+                    };
+                  };
+                  
                   return (
                     <>
-                      <SummaryBox data={data.totalSummary} isTotal={true} />
+                      <SummaryBox data={recalcTotalSummary(data.totalSummary)} isTotal={true} />
                       <SummaryBox data={recalcSummary(data.stagnantSummary)} />
                       <SummaryBox data={recalcSummary(data.normalSummary)} />
                     </>
@@ -1040,15 +1053,28 @@ export default function StagnantStockAnalysis({
                     return sum + channelData.stock_amt;
                   }, 0);
                   
+                  // 전체재고 요약: 각 아이템을 100%로 표시 (정체+정상=100%가 맞물리도록)
+                  const recalcTotalSummaryForChannel = (summary: SummaryBoxData): SummaryBoxData => {
+                    const newCategories = summary.categories.map(cat => ({
+                      ...cat,
+                      stock_amt_pct: 100,
+                    }));
+                    return {
+                      ...summary,
+                      categories: newCategories,
+                      total: newCategories.find(c => c.category === "전체")!,
+                    };
+                  };
+                  
                   return (
                     <>
                       {/* 채널별 요약 박스 생성 */}
                       <SummaryBox 
-                        data={createChannelSummaryBox(
+                        data={recalcTotalSummaryForChannel(createChannelSummaryBox(
                           "전체 재고", 
                           allItems,
                           channelTab
-                        )} 
+                        ))} 
                         isTotal={true} 
                       />
                       <SummaryBox 
