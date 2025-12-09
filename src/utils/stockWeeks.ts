@@ -383,3 +383,88 @@ export function computeStockWeeksForChart(
   });
 }
 
+// ========== 목표 재고주수 역산 관련 ==========
+
+/**
+ * 타겟월의 목표 재고주수를 달성하기 위한 재고 증감액 계산 결과
+ */
+export interface TargetInventoryDeltaResult {
+  targetInventory: number;      // 목표 재고자산
+  deltaInventory: number;       // 증가/감축 필요 금액 (양수: 추가발주 가능, 음수: 발주 줄여야 함)
+  currentInventory: number;     // 현재 타겟월 예상 기말재고
+  salesPeriod: number;          // 기준 기간 매출
+  daysPeriod: number;           // 기준 기간 일수
+}
+
+/**
+ * 타겟월의 목표 재고주수를 달성하기 위한 재고 증감액 계산
+ * 
+ * 공식:
+ * - 목표 재고자산 = (salesPeriod ÷ daysPeriod × 7) × weeksTarget
+ * - deltaInventory = 목표 재고자산 - 현재 예상 기말재고
+ * 
+ * @param targetMonth 타겟월 (예: "2026.03")
+ * @param weeksTarget 목표 재고주수 (예: 40)
+ * @param monthBasis 재고주수 기준 (1 | 2 | 3개월)
+ * @param projectedSalesByMonth 월별 예상 매출 { 'YYYY.MM': number }
+ * @param projectedInventoryByMonth 월별 예상 기말재고 { 'YYYY.MM': number }
+ * @param daysInMonth 월별 일수 { 'YYYY.MM': number }
+ * @returns TargetInventoryDeltaResult | null
+ */
+export function computeTargetInventoryDelta({
+  targetMonth,
+  weeksTarget,
+  monthBasis,
+  projectedSalesByMonth,
+  projectedInventoryByMonth,
+  daysInMonth,
+}: {
+  targetMonth: string;
+  weeksTarget: number;
+  monthBasis: StockWeekWindow;
+  projectedSalesByMonth: { [month: string]: number };
+  projectedInventoryByMonth: { [month: string]: number };
+  daysInMonth: { [month: string]: number };
+}): TargetInventoryDeltaResult | null {
+  // monthBasis에 따른 월 리스트 (타겟월 포함, 과거로 확장)
+  // 기존 getWindowMonths 함수 재사용
+  const monthsToUse = getWindowMonths(targetMonth, monthBasis);
+
+  // sales1, sales2, sales3 및 days1, days2, days3 계산
+  let salesPeriod = 0;
+  let daysPeriod = 0;
+
+  monthsToUse.forEach((m) => {
+    const sales = projectedSalesByMonth[m] || 0;
+    const days = daysInMonth[m] || getDaysInMonthFromYm(m);
+    salesPeriod += sales;
+    daysPeriod += days;
+  });
+
+  // 타겟월의 예상 기말재고
+  const currentInventory = projectedInventoryByMonth[targetMonth] || 0;
+
+  // 목표 재고자산 계산
+  // 목표 재고자산 = (salesPeriod ÷ daysPeriod × 7) × weeksTarget
+  if (daysPeriod === 0) {
+    return null;
+  }
+
+  const dailySales = salesPeriod / daysPeriod;
+  const weeklySales = dailySales * 7;
+  const targetInventory = weeklySales * weeksTarget;
+
+  // deltaInventory = 목표 재고자산 - 현재 예상 기말재고
+  // > 0: 재고 부족 → 추가 발주 가능
+  // < 0: 재고 과다 → 발주 줄여야 함
+  const deltaInventory = targetInventory - currentInventory;
+
+  return {
+    targetInventory: Math.round(targetInventory),
+    deltaInventory: Math.round(deltaInventory),
+    currentInventory: Math.round(currentInventory),
+    salesPeriod: Math.round(salesPeriod),
+    daysPeriod,
+  };
+}
+

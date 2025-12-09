@@ -36,7 +36,7 @@ import StagnantStockAnalysis from "./StagnantStockAnalysis";
 import InventorySeasonChart from "./InventorySeasonChart";
 import { generateForecastForBrand } from "@/lib/forecast";
 import { buildInventoryForecastForTab } from "@/lib/inventoryForecast";
-import { computeStockWeeksForChart, StockWeeksChartPoint, ProductTypeTab } from "@/utils/stockWeeks";
+import { computeStockWeeksForChart, StockWeeksChartPoint, ProductTypeTab, computeTargetInventoryDelta } from "@/utils/stockWeeks";
 
 interface BrandSalesPageProps {
   brand: Brand;
@@ -57,6 +57,7 @@ export default function BrandSalesPage({ brand, title }: BrandSalesPageProps) {
   const [actualArrivalData, setActualArrivalData] = useState<ActualArrivalSummaryData | null>(null);
   const [stockWeekWindow, setStockWeekWindow] = useState<StockWeekWindow>(1);
   const [productTypeTab, setProductTypeTab] = useState<ProductTypeTab>("전체"); // 상품 타입 탭 (전체/주력/아울렛)
+  const [targetStockWeeks, setTargetStockWeeks] = useState<number>(40); // 기준재고주수 (기본값 40주)
   const [stagnantDimensionTab, setStagnantDimensionTab] = useState<DimensionTab>("컬러&사이즈"); // 정체재고 분석 단위
   const [stagnantThresholdPct, setStagnantThresholdPct] = useState<number>(0.01); // 정체재고 기준 %
   const [stagnantItemTab, setStagnantItemTab] = useState<"ACC합계" | "신발" | "모자" | "가방" | "기타">("ACC합계"); // 정체재고 아이템 필터
@@ -249,6 +250,54 @@ export default function BrandSalesPage({ brand, title }: BrandSalesPageProps) {
     );
   }, [salesTabData, inventoryTabDataWithForecast, inventoryData?.daysInMonth, stockWeekWindow, productTypeTab]);
 
+  // 타겟월 (26.03) deltaInventory 계산
+  const TARGET_MONTH = "2026.03";
+
+  const deltaInventoryResult = useMemo(() => {
+    if (!salesBrandData || !inventoryTabDataWithForecast || !inventoryData?.daysInMonth) {
+      return null;
+    }
+
+    // 선택된 탭의 예상 매출 데이터를 월별로 추출
+    const projectedSalesByMonth: { [month: string]: number } = {};
+    const salesTabDataLocal = salesBrandData[selectedTab];
+    if (salesTabDataLocal) {
+      Object.entries(salesTabDataLocal).forEach(([month, data]) => {
+        // 예상 구간에서는 전체 필드 사용, 실적 구간에서는 core + outlet
+        const total = data.전체 !== undefined 
+          ? data.전체 
+          : (data.전체_core || 0) + (data.전체_outlet || 0);
+        projectedSalesByMonth[month] = total;
+      });
+    }
+
+    // 선택된 탭의 예상 재고 데이터를 월별로 추출
+    const projectedInventoryByMonth: { [month: string]: number } = {};
+    Object.entries(inventoryTabDataWithForecast).forEach(([month, data]) => {
+      // 예상 구간에서는 전체 필드 사용, 실적 구간에서는 core + outlet
+      const total = data.전체 !== undefined 
+        ? data.전체 
+        : (data.전체_core || 0) + (data.전체_outlet || 0);
+      projectedInventoryByMonth[month] = total;
+    });
+
+    return computeTargetInventoryDelta({
+      targetMonth: TARGET_MONTH,
+      weeksTarget: targetStockWeeks,
+      monthBasis: stockWeekWindow,
+      projectedSalesByMonth,
+      projectedInventoryByMonth,
+      daysInMonth: inventoryData.daysInMonth,
+    });
+  }, [
+    salesBrandData,
+    selectedTab,
+    inventoryTabDataWithForecast,
+    inventoryData?.daysInMonth,
+    targetStockWeeks,
+    stockWeekWindow,
+  ]);
+
   return (
       <>
         <Navigation />
@@ -306,6 +355,9 @@ export default function BrandSalesPage({ brand, title }: BrandSalesPageProps) {
                 setGrowthRate={setGrowthRate}
                 stockWeekWindow={stockWeekWindow}
                 setStockWeekWindow={setStockWeekWindow}
+                targetStockWeeks={targetStockWeeks}
+                setTargetStockWeeks={setTargetStockWeeks}
+                deltaInventory={deltaInventoryResult?.deltaInventory ?? null}
               />
             </div>
 

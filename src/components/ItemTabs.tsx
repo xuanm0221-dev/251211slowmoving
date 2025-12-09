@@ -16,6 +16,10 @@ interface ItemTabsProps {
   // 재고주수 계산 기간 (1/2/3개월)
   stockWeekWindow: StockWeekWindow;
   setStockWeekWindow: (value: StockWeekWindow) => void;
+  // 목표 재고주수 및 신규발주가능 금액 (새로 추가)
+  targetStockWeeks: number;
+  setTargetStockWeeks: (value: number) => void;
+  deltaInventory: number | null;
 }
 
 export default function ItemTabs({ 
@@ -28,6 +32,9 @@ export default function ItemTabs({
   setGrowthRate,
   stockWeekWindow,
   setStockWeekWindow,
+  targetStockWeeks,
+  setTargetStockWeeks,
+  deltaInventory,
 }: ItemTabsProps) {
   // 현재 브랜드의 색상 정보 가져오기
   const brandInfo = BRANDS.find(b => b.key === brand);
@@ -128,6 +135,63 @@ export default function ItemTabs({
               </button>
             ))}
           </div>
+        </div>
+      </div>
+
+      {/* 목표 재고주수 + 신규발주가능 금액 (26.03 기준) */}
+      <div className="flex flex-wrap items-center gap-3 px-4 py-2 bg-gradient-to-r from-emerald-50 to-teal-50 rounded-lg border border-emerald-200 shadow-sm">
+        {/* 기준재고주수 입력 */}
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2">
+            <span className="text-emerald-600 text-lg">🎯</span>
+            <label className="text-sm font-medium text-gray-700 whitespace-nowrap">
+              기준재고주수
+            </label>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <input
+              type="number"
+              value={targetStockWeeks}
+              onChange={(e) => {
+                const value = parseInt(e.target.value, 10);
+                if (!isNaN(value) && value >= 0) {
+                  setTargetStockWeeks(value);
+                }
+              }}
+              className="w-16 px-3 py-1.5 bg-white border border-emerald-300 rounded-md text-sm font-semibold text-gray-800 text-center focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all"
+              min="0"
+              step="1"
+              title="목표 재고주수 (26년 3월 기준)"
+            />
+            <span className="text-xs text-gray-500 font-medium">주</span>
+          </div>
+        </div>
+
+        {/* 구분선 */}
+        <div className="h-6 w-px bg-emerald-200"></div>
+
+        {/* 신규발주가능 금액 표시 */}
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-medium text-gray-600 whitespace-nowrap">
+            신규발주가능 금액:
+          </span>
+          <span
+            className={cn(
+              "px-3 py-1.5 rounded-md text-sm font-bold min-w-[120px] text-center",
+              deltaInventory === null
+                ? "bg-gray-100 text-gray-500"
+                : deltaInventory >= 0
+                ? "bg-emerald-100 text-emerald-700 border border-emerald-300"
+                : "bg-red-100 text-red-700 border border-red-300"
+            )}
+            title="26년 3월 목표 재고 대비 증감액"
+          >
+            {deltaInventory === null
+              ? "-"
+              : deltaInventory >= 0
+              ? `+${Math.abs(deltaInventory).toLocaleString("ko-KR")}원`
+              : `△${Math.abs(deltaInventory).toLocaleString("ko-KR")}원`}
+          </span>
         </div>
       </div>
     </div>
