@@ -57,7 +57,7 @@ export default function BrandSalesPage({ brand, title }: BrandSalesPageProps) {
   const [actualArrivalData, setActualArrivalData] = useState<ActualArrivalSummaryData | null>(null);
   const [stockWeekWindow, setStockWeekWindow] = useState<StockWeekWindow>(1);
   const [productTypeTab, setProductTypeTab] = useState<ProductTypeTab>("전체"); // 상품 타입 탭 (전체/주력/아울렛)
-  const [targetStockWeeks, setTargetStockWeeks] = useState<number>(40); // 기준재고주수 (기본값 40주)
+  const [targetStockWeeks, setTargetStockWeeks] = useState<number>(40); // 목표재고주수 (기본값 40주)
   const [stagnantDimensionTab, setStagnantDimensionTab] = useState<DimensionTab>("컬러&사이즈"); // 정체재고 분석 단위
   const [stagnantThresholdPct, setStagnantThresholdPct] = useState<number>(0.01); // 정체재고 기준 %
   const [stagnantItemTab, setStagnantItemTab] = useState<"ACC합계" | "신발" | "모자" | "가방" | "기타">("ACC합계"); // 정체재고 아이템 필터

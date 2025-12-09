@@ -140,12 +140,12 @@ export default function ItemTabs({
 
       {/* 목표 재고주수 + 신규발주가능 금액 (26.03 기준) */}
       <div className="flex flex-wrap items-center gap-3 px-4 py-2 bg-gradient-to-r from-emerald-50 to-teal-50 rounded-lg border border-emerald-200 shadow-sm">
-        {/* 기준재고주수 입력 */}
+        {/* 목표재고주수 입력 */}
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-2">
             <span className="text-emerald-600 text-lg">🎯</span>
             <label className="text-sm font-medium text-gray-700 whitespace-nowrap">
-              기준재고주수
+              목표재고주수
             </label>
           </div>
           <div className="flex items-center gap-1.5">

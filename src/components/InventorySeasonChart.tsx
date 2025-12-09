@@ -138,29 +138,36 @@ const YoYTooltip = ({ active, payload, label, data2024, data2025 }: YoYTooltipPr
 
   if (!curr) return null;
 
+  const monthNum = parseInt(curr.month.slice(-2));
+  const showPrevData = monthNum >= 6; // 6월 이상만 전년 데이터 표시 (24년 1~5월 제외)
+
   const daysInMonth = getDaysInMonth(curr.month);
-  const yoy = prev?.total_stock_amt > 0 
+  const yoy = showPrevData && prev?.total_stock_amt > 0 
     ? ((curr.total_stock_amt / prev.total_stock_amt) * 100).toFixed(1) 
     : "-";
 
   return (
     <div className="bg-white border border-gray-300 rounded-lg p-3 text-xs shadow-lg min-w-[280px]">
       <div className="font-bold text-gray-800 mb-2 border-b pb-2">
-        25년 {parseInt(curr.month.slice(-2))}월
+        25년 {monthNum}월
       </div>
       <div className="space-y-1 mb-3">
         <div className="flex justify-between">
           <span className="text-gray-600">당년 재고액:</span>
           <span className="font-medium">{formatNumber(curr.total_stock_amt / 1_000_000)}M</span>
         </div>
-        <div className="flex justify-between">
-          <span className="text-gray-600">전년 재고액:</span>
-          <span className="font-medium">{formatNumber((prev?.total_stock_amt || 0) / 1_000_000)}M</span>
-        </div>
-        <div className="flex justify-between">
-          <span className="text-gray-600">YOY:</span>
-          <span className="font-medium text-pink-500">{yoy}%</span>
-        </div>
+        {showPrevData && (
+          <>
+            <div className="flex justify-between">
+              <span className="text-gray-600">전년 재고액:</span>
+              <span className="font-medium">{formatNumber((prev?.total_stock_amt || 0) / 1_000_000)}M</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">YOY:</span>
+              <span className="font-medium text-pink-500">{yoy}%</span>
+            </div>
+          </>
+        )}
       </div>
       <div className="border-t pt-2">
         <div className="font-medium text-gray-700 mb-2">시즌별 상세 (당년 재고 기준):</div>
@@ -169,8 +176,8 @@ const YoYTooltip = ({ active, payload, label, data2024, data2025 }: YoYTooltipPr
             <tr className="text-gray-600 border-b">
               <th className="text-left py-1 pr-2"></th>
               <th className="text-right py-1 px-2">당년</th>
-              <th className="text-right py-1 px-2">전년</th>
-              <th className="text-right py-1 pl-2">YOY</th>
+              {showPrevData && <th className="text-right py-1 px-2">전년</th>}
+              {showPrevData && <th className="text-right py-1 pl-2">YOY</th>}
             </tr>
           </thead>
           <tbody>
@@ -179,7 +186,7 @@ const YoYTooltip = ({ active, payload, label, data2024, data2025 }: YoYTooltipPr
               const prevSeasonData = prev?.[season];
               const currAmt = currSeasonData?.stock_amt || 0;
               const prevAmt = prevSeasonData?.stock_amt || 0;
-              const seasonYoy = prevAmt > 0 ? ((currAmt / prevAmt) * 100).toFixed(1) : "-";
+              const seasonYoy = showPrevData && prevAmt > 0 ? ((currAmt / prevAmt) * 100).toFixed(1) : "-";
               
               return (
                 <tr key={season}>
@@ -195,12 +202,16 @@ const YoYTooltip = ({ active, payload, label, data2024, data2025 }: YoYTooltipPr
                   <td className="text-right py-1 px-2 font-medium">
                     {formatNumber(currAmt / 1_000_000)}M
                   </td>
-                  <td className="text-right py-1 px-2">
-                    {formatNumber(prevAmt / 1_000_000)}M
-                  </td>
-                  <td className="text-right py-1 pl-2 text-pink-500">
-                    {seasonYoy === "-" ? "-" : `${seasonYoy}%`}
-                  </td>
+                  {showPrevData && (
+                    <td className="text-right py-1 px-2">
+                      {formatNumber(prevAmt / 1_000_000)}M
+                    </td>
+                  )}
+                  {showPrevData && (
+                    <td className="text-right py-1 pl-2 text-pink-500">
+                      {seasonYoy === "-" ? "-" : `${seasonYoy}%`}
+                    </td>
+                  )}
                 </tr>
               );
             })}
@@ -369,22 +380,27 @@ export default function InventorySeasonChart({ brand, dimensionTab = "스타일"
       if (mode === "전년대비") {
         // 전년대비 모드: 왼쪽=전년 재고, 오른쪽=당년 재고
         // [YOY 미포함] 전년대비 탭에서는 YOY 라인을 표시하지 않음
+        // [24년 1~5월 제외] 전년 데이터가 없는 1~5월은 전년 막대 표시 안함
+        const showPrevData = monthNum >= 6; // 6월 이상만 전년 데이터 표시
+        
         return {
           month: `2025-${String(monthNum).padStart(2, "0")}`,
           monthIdx: idx,
-          // 전년 재고 (왼쪽 막대)
-          prev_과시즌: (prev?.과시즌?.stock_amt || 0) / 1_000_000,
-          prev_당시즌: (prev?.당시즌?.stock_amt || 0) / 1_000_000,
-          prev_차기시즌: (prev?.차기시즌?.stock_amt || 0) / 1_000_000,
-          prev_정체재고: (prev?.정체재고?.stock_amt || 0) / 1_000_000,
+          // 전년 재고 (왼쪽 막대) - 1~5월은 0
+          prev_과시즌: showPrevData ? (prev?.과시즌?.stock_amt || 0) / 1_000_000 : 0,
+          prev_당시즌: showPrevData ? (prev?.당시즌?.stock_amt || 0) / 1_000_000 : 0,
+          prev_차기시즌: showPrevData ? (prev?.차기시즌?.stock_amt || 0) / 1_000_000 : 0,
+          prev_정체재고: showPrevData ? (prev?.정체재고?.stock_amt || 0) / 1_000_000 : 0,
           // 당년 재고 (오른쪽 막대)
           curr_과시즌: (curr.과시즌?.stock_amt || 0) / 1_000_000,
           curr_당시즌: (curr.당시즌?.stock_amt || 0) / 1_000_000,
           curr_차기시즌: (curr.차기시즌?.stock_amt || 0) / 1_000_000,
           curr_정체재고: (curr.정체재고?.stock_amt || 0) / 1_000_000,
           // 비율 라벨용 데이터
-          prev_total: (prev?.total_stock_amt || 0) / 1_000_000,
+          prev_total: showPrevData ? (prev?.total_stock_amt || 0) / 1_000_000 : 0,
           curr_total: curr.total_stock_amt / 1_000_000,
+          // 전년 데이터 표시 여부 (툴팁용)
+          showPrevData,
         };
       } else {
         // 매출액대비 모드: 왼쪽=당년 판매, 오른쪽=당년 재고
@@ -902,7 +918,7 @@ export default function InventorySeasonChart({ brand, dimensionTab = "스타일"
             {mode === "전년대비" ? (
               <>
                 <div className="flex items-center gap-3">
-                  <span className="font-medium">당년-24년:</span>
+                  <span className="font-medium">전년-24년:</span>
                   <div className="flex items-center gap-1">
                     <span className="w-3 h-3 rounded-sm" style={{ backgroundColor: COLORS.prev.과시즌 }}></span>
                     <span>과시즌</span>
