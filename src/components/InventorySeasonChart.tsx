@@ -27,6 +27,7 @@ interface InventorySeasonChartProps {
   dimensionTab?: DimensionTab;
   onDimensionTabChange?: (tab: DimensionTab) => void;
   thresholdPct?: number;
+  minQty?: number;  // 최소 수량 기준 (정체재고 판단용)
   itemTab?: ItemFilterTab;
   onItemTabChange?: (tab: ItemFilterTab) => void;
 }
@@ -331,7 +332,7 @@ const SalesTooltip = ({ active, payload, label, data2024, data2025 }: SalesToolt
 // 데이터 기준월 제한 상수 (2025년 11월까지만 표시)
 const MAX_MONTH = "202511";
 
-export default function InventorySeasonChart({ brand, dimensionTab = "스타일", onDimensionTabChange, thresholdPct = 0.01, itemTab = "ACC합계", onItemTabChange }: InventorySeasonChartProps) {
+export default function InventorySeasonChart({ brand, dimensionTab = "스타일", onDimensionTabChange, thresholdPct = 0.01, minQty = 10, itemTab = "ACC합계", onItemTabChange }: InventorySeasonChartProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<InventorySeasonChartResponse | null>(null);
@@ -339,7 +340,7 @@ export default function InventorySeasonChart({ brand, dimensionTab = "스타일"
 
   const brandCode = BRAND_CODE_MAP[brand] || "M";
 
-  // 데이터 로드 (dimensionTab, thresholdPct, itemTab 변경 시 다시 로드)
+  // 데이터 로드 (dimensionTab, thresholdPct, minQty, itemTab 변경 시 다시 로드)
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
@@ -348,6 +349,7 @@ export default function InventorySeasonChart({ brand, dimensionTab = "스타일"
         const params = new URLSearchParams({
           brand: brandCode,
           thresholdPct: String(thresholdPct),
+          minQty: String(minQty),
           dimensionTab: dimensionTab,
           itemFilter: itemTab,
         });
@@ -364,7 +366,7 @@ export default function InventorySeasonChart({ brand, dimensionTab = "스타일"
       }
     };
     fetchData();
-  }, [brandCode, dimensionTab, thresholdPct, itemTab]);
+  }, [brandCode, dimensionTab, thresholdPct, minQty, itemTab]);
 
   // 차트 데이터 생성
   const chartData = useMemo(() => {
@@ -992,7 +994,7 @@ export default function InventorySeasonChart({ brand, dimensionTab = "스타일"
           {/* 오른쪽: 정체재고 기준 설명 */}
           <div className="flex items-center gap-1.5 text-red-700 font-medium">
             <span className="w-3 h-3 rounded-sm flex-shrink-0" style={{ backgroundColor: COLORS.curr.정체재고 }}></span>
-            <span>정체재고 = 과시즌 중 (당월판매 ÷ 중분류 기말재고) {"<"} {thresholdPct}%</span>
+            <span>정체재고: 과시즌 중 (1) 전월말 수량 ≥ {minQty}개 AND (2) (당월판매 ÷ 중분류 기말재고) {"<"} {thresholdPct}%</span>
           </div>
         </div>
       </div>

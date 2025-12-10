@@ -27,6 +27,8 @@ interface StagnantStockAnalysisProps {
   onDimensionTabChange?: (tab: DimensionTab) => void;
   thresholdPct?: number;
   onThresholdPctChange?: (pct: number) => void;
+  minQty?: number;  // 최소 수량 기준 (정체재고 판단용)
+  onMinQtyChange?: (qty: number) => void;
   itemTab?: ItemFilterTab;
   onItemTabChange?: (tab: ItemFilterTab) => void;
 }
@@ -558,6 +560,8 @@ export default function StagnantStockAnalysis({
   onDimensionTabChange,
   thresholdPct: externalThresholdPct,
   onThresholdPctChange,
+  minQty: externalMinQty,
+  onMinQtyChange,
   itemTab: externalItemTab,
   onItemTabChange,
 }: StagnantStockAnalysisProps) {
@@ -617,8 +621,16 @@ export default function StagnantStockAnalysis({
   // 검색어 상태
   const [searchQuery, setSearchQuery] = useState<string>("");
 
-  // 최소 수량 기준 상태 (기본값 10)
-  const [minQty, setMinQty] = useState<number>(10);
+  // 최소 수량 기준 상태 (기본값 10) - 외부에서 제어 가능
+  const [internalMinQty, setInternalMinQty] = useState<number>(10);
+  const minQty = externalMinQty ?? internalMinQty;
+  const setMinQty = (qty: number) => {
+    if (onMinQtyChange) {
+      onMinQtyChange(qty);
+    } else {
+      setInternalMinQty(qty);
+    }
+  };
 
   // 품번 상세 모달 상태
   const [modalOpen, setModalOpen] = useState(false);

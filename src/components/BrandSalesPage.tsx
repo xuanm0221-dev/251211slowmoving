@@ -60,6 +60,7 @@ export default function BrandSalesPage({ brand, title }: BrandSalesPageProps) {
   const [targetStockWeeks, setTargetStockWeeks] = useState<number>(40); // 목표재고주수 (기본값 40주)
   const [stagnantDimensionTab, setStagnantDimensionTab] = useState<DimensionTab>("컬러&사이즈"); // 정체재고 분석 단위
   const [stagnantThresholdPct, setStagnantThresholdPct] = useState<number>(0.01); // 정체재고 기준 %
+  const [stagnantMinQty, setStagnantMinQty] = useState<number>(10); // 정체재고 최소 수량 기준 (기본값 10)
   const [stagnantItemTab, setStagnantItemTab] = useState<"ACC합계" | "신발" | "모자" | "가방" | "기타">("ACC합계"); // 정체재고 아이템 필터
   
   // 특정 아이템의 stockWeek 변경 핸들러
@@ -438,6 +439,7 @@ export default function BrandSalesPage({ brand, title }: BrandSalesPageProps) {
               dimensionTab={stagnantDimensionTab} 
               onDimensionTabChange={setStagnantDimensionTab}
               thresholdPct={stagnantThresholdPct}
+              minQty={stagnantMinQty}
               itemTab={stagnantItemTab}
               onItemTabChange={setStagnantItemTab}
             />
@@ -449,6 +451,8 @@ export default function BrandSalesPage({ brand, title }: BrandSalesPageProps) {
               onDimensionTabChange={setStagnantDimensionTab}
               thresholdPct={stagnantThresholdPct}
               onThresholdPctChange={setStagnantThresholdPct}
+              minQty={stagnantMinQty}
+              onMinQtyChange={setStagnantMinQty}
               itemTab={stagnantItemTab}
               onItemTabChange={setStagnantItemTab}
             />
