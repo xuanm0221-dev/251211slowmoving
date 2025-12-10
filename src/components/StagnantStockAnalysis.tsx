@@ -617,6 +617,9 @@ export default function StagnantStockAnalysis({
   // 검색어 상태
   const [searchQuery, setSearchQuery] = useState<string>("");
 
+  // 최소 수량 기준 상태 (기본값 10)
+  const [minQty, setMinQty] = useState<number>(10);
+
   // 품번 상세 모달 상태
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<StagnantStockItem | null>(null);
@@ -803,6 +806,7 @@ export default function StagnantStockAnalysis({
         targetMonth,
         dimensionTab,
         thresholdPct: String(thresholdPct),
+        minQty: String(minQty),
       });
       
       const response = await fetch(`/api/stagnant-stock?${params}`);
@@ -823,7 +827,7 @@ export default function StagnantStockAnalysis({
     } finally {
       setLoading(false);
     }
-  }, [brandCode, targetMonth, dimensionTab, thresholdPct]);
+  }, [brandCode, targetMonth, dimensionTab, thresholdPct, minQty]);
 
   // 초기 월 목록 로드
   useEffect(() => {
@@ -890,7 +894,7 @@ export default function StagnantStockAnalysis({
         headerAction={
           <div className="text-xs text-gray-500 text-right">
             <div>25년 기준: 차기 26NSF, 당기 25NSF, 과시즌 = 나머지 | 24년 기준: 차기 25NSF, 당기 24NSF, 과시즌 = 나머지</div>
-            <div>정체재고: 과시즌 중 (당월판매 ÷ 중분류 기말재고) {"<"} {thresholdPct}%</div>
+            <div>정체재고: 과시즌 중 (1) 전월말 수량 ≥ {minQty}개 AND (2) (당월판매 ÷ 중분류 기말재고) {"<"} {thresholdPct}%</div>
           </div>
         }
       >
@@ -938,6 +942,23 @@ export default function StagnantStockAnalysis({
                 </div>
               </div>
 
+              {/* 최소수량 기준 */}
+              <div className="flex flex-col gap-1">
+                <label className="text-sm font-medium text-gray-700">최소수량 (개)</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    value={minQty}
+                    onChange={(e) => setMinQty(parseInt(e.target.value, 10) || 0)}
+                    step="1"
+                    min="0"
+                    max="1000"
+                    className="w-20 px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <span className="text-xs text-gray-500">전월말 수량 {"<"} {minQty}개 → 과시즌</span>
+                </div>
+              </div>
+
               {/* 채널 탭 */}
               <div className="flex flex-col gap-1">
                 <label className="text-sm font-medium text-gray-700">채널</label>
@@ -962,7 +983,7 @@ export default function StagnantStockAnalysis({
 
             {/* 오른쪽: 메타 정보 */}
             <div className="text-xs text-gray-500 text-right self-end">
-              기준월: {formatMonth(targetMonth)} | 브랜드: {brand} | 분석단위: {dimensionTab} | 정체기준: {thresholdPct}% | 당해연도: 2025 | 차기연도: 2026
+              기준월: {formatMonth(targetMonth)} | 브랜드: {brand} | 분석단위: {dimensionTab} | 정체기준: {thresholdPct}% | 최소수량: {minQty}개 | 당해연도: 2025 | 차기연도: 2026
             </div>
           </div>
         </div>

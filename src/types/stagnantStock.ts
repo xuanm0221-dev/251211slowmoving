@@ -37,6 +37,7 @@ export interface StagnantStockItem {
   stock_amt: number;         // 재고금액 (전체)
   sales_tag_amt: number;     // TAG 매출금액 (전체)
   ratio: number;             // 비율 (매출/중분류재고) - 전체 기준
+  prev_stock_qty?: number;   // 전월 재고수량 (정체재고 판단용)
   status: StockStatus;       // 상태 (정체/정상) - 전체 기준으로만 판단
   seasonGroup: SeasonGroup;  // 시즌 그룹
   // 채널별 데이터 (FR)

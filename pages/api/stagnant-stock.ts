@@ -42,20 +42,37 @@ function getYearConfig(): { currentYear: string; nextYear: string } {
   };
 }
 
-// 시즌 그룹 결정 - 시즌 구분 선행, 과시즌만 정체재고 판단
-// 변경: 모든 상품에 정체재고 여부 판단 → 과시즌 상품에만 정체재고 여부 판단
+// 전월 계산 함수 (YYYYMM 형식)
+function getPrevMonth(targetMonth: string): string {
+  const year = parseInt(targetMonth.slice(0, 4), 10);
+  const month = parseInt(targetMonth.slice(4, 6), 10);
+  
+  if (month === 1) {
+    return `${year - 1}12`;
+  }
+  return `${year}${String(month - 1).padStart(2, '0')}`;
+}
+
+// 시즌 그룹 결정 - 시즌 구분 선행, 과시즌만 정체재고 판단 (2단계)
+// 변경: 과시즌 상품에 대해 전월말 수량 조건 추가
 function getSeasonGroup(
   season: string, 
   ratio: number, 
   thresholdRatio: number,
   currentYear: string, 
-  nextYear: string
+  nextYear: string,
+  prevMonthStockQty: number,
+  minQty: number
 ): SeasonGroup {
   // 1. 먼저 시즌 구분 (당시즌, 차기시즌은 정체재고로 바뀌지 않음)
   if (season && season.startsWith(currentYear)) return "당시즌";
   if (season && season.startsWith(nextYear)) return "차기시즌";
   
-  // 2. 과시즌인 경우만 정체재고 여부 판단
+  // 2. 과시즌인 경우: 2단계 정체재고 판단
+  // (1) 전월말 수량이 minQty 미만이면 정체 아님 (과시즌)
+  if (prevMonthStockQty < minQty) return "과시즌";
+  
+  // (2) 전월말 수량 >= minQty인 경우, 비율로 정체재고 판단
   if (ratio < thresholdRatio) return "정체재고";
   return "과시즌";
 }
@@ -79,12 +96,26 @@ function buildStagnantStockQuery(
   brand: string,
   targetMonth: string,
   dimensionTab: DimensionTab,
-  thresholdRatio: number
+  thresholdRatio: number,
+  prevMonth: string
 ): string {
   const dimConfig = DIMENSION_KEY_MAP[dimensionTab];
   
   return `
     WITH 
+    -- 전월 재고 수량 집계 (정체재고 판단용)
+    prev_month_stock AS (
+      SELECT 
+        ${dimConfig.stockKey} AS dimension_key,
+        SUM(a.stock_qty_expected) AS prev_stock_qty
+      FROM fnf.chn.dw_stock_m a
+      LEFT JOIN fnf.sap_fnf.mst_prdt b ON a.prdt_cd = b.prdt_cd
+      WHERE a.yymm = '${prevMonth}'
+        AND a.brd_cd = '${brand}'
+        AND b.prdt_hrrc1_nm = 'ACC'
+      GROUP BY ${dimConfig.stockKey}
+    ),
+    
     -- 채널별 판매 데이터 집계
     sales_by_channel AS (
       SELECT 
@@ -184,7 +215,7 @@ function buildStagnantStockQuery(
       GROUP BY mid_category_kr
     ),
     
-    -- 전체 기준 판매와 재고 JOIN (정체/정상 판단용)
+    -- 전체 기준 판매와 재고 JOIN (정체/정상 판단용) + 전월 재고 수량
     combined_total AS (
       SELECT 
         COALESCE(st.dimension_key, sa.dimension_key) AS dimension_key,
@@ -197,15 +228,17 @@ function buildStagnantStockQuery(
         COALESCE(st.stock_qty, 0) AS stock_qty,
         COALESCE(st.stock_amt, 0) AS stock_amt,
         COALESCE(sa.sales_tag_amt, 0) AS sales_tag_amt,
-        mt.stock_amt_total_mid
+        mt.stock_amt_total_mid,
+        COALESCE(pms.prev_stock_qty, 0) AS prev_stock_qty
       FROM stock_agg st
       FULL OUTER JOIN sales_agg sa ON st.dimension_key = sa.dimension_key
       LEFT JOIN mid_category_totals mt ON COALESCE(st.mid_category_kr, sa.mid_category_kr) = mt.mid_category_kr
+      LEFT JOIN prev_month_stock pms ON COALESCE(st.dimension_key, sa.dimension_key) = pms.dimension_key
       WHERE COALESCE(st.stock_amt, 0) > 0
         AND COALESCE(st.mid_category_kr, sa.mid_category_kr) IN ('신발', '모자', '가방', '기타')
     ),
     
-    -- 정체/정상 상태 판단 (전체 기준)
+    -- 정체/정상 상태 판단 (전체 기준) - 전월 수량 포함
     with_status AS (
       SELECT 
         dimension_key,
@@ -219,15 +252,11 @@ function buildStagnantStockQuery(
         stock_amt,
         sales_tag_amt,
         stock_amt_total_mid,
+        prev_stock_qty,
         CASE 
           WHEN stock_amt_total_mid > 0 THEN sales_tag_amt / stock_amt_total_mid
           ELSE 0
-        END AS ratio,
-        CASE 
-          WHEN stock_amt_total_mid > 0 AND (sales_tag_amt / stock_amt_total_mid) < ${thresholdRatio}
-          THEN '정체재고'
-          ELSE '정상재고'
-        END AS status
+        END AS ratio
       FROM combined_total
     ),
     
@@ -244,7 +273,7 @@ function buildStagnantStockQuery(
       LEFT JOIN sales_by_channel slc ON ws.dimension_key = slc.dimension_key AND stc.channel = slc.channel
     )
     
-    -- 최종 결과: 전체 기준 정체/정상 + 채널별 재고/판매
+    -- 최종 결과: 전체 기준 정체/정상 + 채널별 재고/판매 + 전월 수량
     SELECT 
       ws.dimension_key,
       ws.prdt_cd,
@@ -258,7 +287,7 @@ function buildStagnantStockQuery(
       ws.sales_tag_amt,
       ws.stock_amt_total_mid,
       ws.ratio,
-      ws.status,
+      ws.prev_stock_qty,
       -- 채널별 재고/판매 (FR)
       COALESCE(fr.channel_stock_amt, 0) AS fr_stock_amt,
       COALESCE(fr.channel_stock_qty, 0) AS fr_stock_qty,
@@ -358,7 +387,7 @@ export default async function handler(
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const { brand, targetMonth, dimensionTab, thresholdPct } = req.query;
+  const { brand, targetMonth, dimensionTab, thresholdPct, minQty: minQtyParam } = req.query;
 
   // 파라미터 검증
   if (!brand || typeof brand !== "string") {
@@ -371,6 +400,8 @@ export default async function handler(
   const dimTab = (dimensionTab as DimensionTab) || "스타일";
   const threshold = parseFloat(thresholdPct as string) || 0.01;
   const thresholdRatio = threshold / 100; // 0.01% → 0.0001
+  const minQty = parseInt(minQtyParam as string, 10) || 10; // 최소 수량 기준 (기본값 10)
+  const prevMonth = getPrevMonth(targetMonth); // 전월 계산
 
   const { currentYear, nextYear } = getYearConfig();
 
@@ -380,17 +411,19 @@ export default async function handler(
     const monthsResult = await runQuery(monthsQuery);
     const availableMonths = monthsResult.map((row: any) => row.SALE_YM);
 
-    // 2. 정체재고 분석 데이터 조회
-    const mainQuery = buildStagnantStockQuery(brand, targetMonth, dimTab, thresholdRatio);
+    // 2. 정체재고 분석 데이터 조회 (전월 재고 수량 포함)
+    const mainQuery = buildStagnantStockQuery(brand, targetMonth, dimTab, thresholdRatio, prevMonth);
     const mainResult = await runQuery(mainQuery);
 
     // 3. 결과 변환 (채널별 데이터 포함)
-    // 변경: 시즌 구분 선행 → 과시즌만 정체재고 판단
+    // 변경: 과시즌에 대해 2단계 정체재고 판단 (전월 수량 + 비율)
     const items: StagnantStockItem[] = mainResult.map((row: any) => {
       const season = row.SEASON || "";
       const ratio = Number(row.RATIO) || 0;
-      // seasonGroup 결정: 시즌 구분 먼저, 과시즌인 경우만 ratio로 정체재고 판단
-      const seasonGroup = getSeasonGroup(season, ratio, thresholdRatio, currentYear, nextYear);
+      const prevStockQty = Number(row.PREV_STOCK_QTY) || 0;
+      
+      // seasonGroup 결정: 시즌 구분 먼저, 과시즌인 경우 2단계 판단
+      const seasonGroup = getSeasonGroup(season, ratio, thresholdRatio, currentYear, nextYear, prevStockQty, minQty);
       // status는 seasonGroup 기반으로 결정 (정체재고이면 정체재고, 아니면 정상재고)
       const status: StockStatus = seasonGroup === "정체재고" ? "정체재고" : "정상재고";
 
@@ -407,6 +440,7 @@ export default async function handler(
         stock_amt: Number(row.STOCK_AMT) || 0,
         sales_tag_amt: Number(row.SALES_TAG_AMT) || 0,
         ratio: Number(row.RATIO) || 0,
+        prev_stock_qty: prevStockQty,
         status,
         seasonGroup,
         // 채널별 데이터 (FR)
