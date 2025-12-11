@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { runQuery } from "../../lib/snowflake";
 
 // 시즌 그룹 타입
-type SeasonGroup = "정체재고" | "당시즌" | "차기시즌" | "과시즌";
+type SeasonGroup = "정체재고" | "당시즌" | "차기시즌" | "과시즌" | "당월수량미달";
 
 // 분석 단위 타입
 type DimensionTab = "스타일" | "컬러" | "사이즈" | "컬러&사이즈";
@@ -37,6 +37,7 @@ interface MonthSeasonData {
   과시즌: { stock_amt: number; sales_amt: number };
   당시즌: { stock_amt: number; sales_amt: number };
   차기시즌: { stock_amt: number; sales_amt: number };
+  당월수량미달: { stock_amt: number; sales_amt: number };
   total_stock_amt: number;
   total_sales_amt: number;
 }
@@ -50,6 +51,7 @@ interface InventorySeasonChartResponse {
     thresholdPct: number;
     currentYear: string;
     nextYear: string;
+    currentMonthMinQty: number;
   };
 }
 
@@ -64,6 +66,7 @@ function getYearConfig(): { currentYear: string; nextYear: string } {
 }
 
 // 재고 쿼리 (월별, 시즌별 집계) - dimensionTab에 따라 집계 기준 변경
+// 당월수량미달: 스타일 기준 당월수량 < currentMonthMinQty인 상품
 function buildMonthlyStockQuery(
   brand: string,
   yearPrefix: string, // "2024" or "2025"
@@ -72,7 +75,8 @@ function buildMonthlyStockQuery(
   nextYear: string,
   dimensionTab: DimensionTab = "스타일",
   itemFilter: ItemFilterTab = "ACC합계",
-  minQty: number = 10  // 최소 수량 기준 (정체재고 판단용)
+  minQty: number = 10,  // 최소 수량 기준 (정체재고 판단용) - 전월말 기준
+  currentMonthMinQty: number = 10  // 당월수량 기준 (당월수량미달 판단용)
 ): string {
   // 전년 시즌 구분용: 2024년이면 당시즌=24*, 차기=25*, 2025년이면 당시즌=25*, 차기=26*
   const yearShort = yearPrefix.slice(-2); // "24" or "25"
@@ -88,11 +92,26 @@ function buildMonthlyStockQuery(
 
   return `
     WITH 
+    -- 월별 스타일 기준 당월수량 집계 (당월수량미달 판단용)
+    style_monthly_qty AS (
+      SELECT 
+        a.yymm AS month,
+        a.prdt_cd AS style,
+        SUM(a.stock_qty_expected) AS current_stock_qty
+      FROM fnf.chn.dw_stock_m a
+      LEFT JOIN fnf.sap_fnf.mst_prdt b ON a.prdt_cd = b.prdt_cd
+      WHERE a.yymm >= '${yearPrefix}01' AND a.yymm <= '${yearPrefix}12'
+        AND a.brd_cd = '${brand}'
+        AND b.prdt_hrrc1_nm = 'ACC'
+      GROUP BY a.yymm, a.prdt_cd
+    ),
+    
     -- 월별 재고 데이터 (dimension 기준)
     stock_monthly AS (
       SELECT 
         a.yymm AS month,
         ${dimConfig.stockKey} AS dimension_key,
+        a.prdt_cd AS style,
         MAX(a.sesn) AS season,
         MAX(CASE
           WHEN b.prdt_hrrc2_nm = 'Shoes' THEN '신발'
@@ -107,7 +126,7 @@ function buildMonthlyStockQuery(
       WHERE a.yymm >= '${yearPrefix}01' AND a.yymm <= '${yearPrefix}12'
         AND a.brd_cd = '${brand}'
         AND b.prdt_hrrc1_nm = 'ACC'
-      GROUP BY a.yymm, ${dimConfig.stockKey}
+      GROUP BY a.yymm, ${dimConfig.stockKey}, a.prdt_cd
     ),
     
     -- 월별 판매 데이터 (dimension 기준)
@@ -165,13 +184,16 @@ function buildMonthlyStockQuery(
       SELECT 
         st.month,
         st.dimension_key,
+        st.style,
         st.season,
         st.mid_category_kr,
         st.stock_amt,
         COALESCE(sa.sales_amt, 0) AS sales_amt,
         mt.stock_amt_total_mid,
         -- 전월 수량 조회 (현재월 - 1)
-        COALESCE(pms.prev_stock_qty, 0) AS prev_stock_qty
+        COALESCE(pms.prev_stock_qty, 0) AS prev_stock_qty,
+        -- 스타일 기준 당월수량
+        COALESCE(smq.current_stock_qty, 0) AS style_current_qty
       FROM stock_monthly st
       LEFT JOIN sales_monthly sa 
         ON st.month = sa.month AND st.dimension_key = sa.dimension_key
@@ -183,11 +205,13 @@ function buildMonthlyStockQuery(
             ELSE SUBSTR(st.month, 1, 4) || LPAD(CAST(CAST(SUBSTR(st.month, 5, 2) AS INT) - 1 AS VARCHAR), 2, '0')
            END = pms.month 
         AND st.dimension_key = pms.dimension_key
+      LEFT JOIN style_monthly_qty smq
+        ON st.month = smq.month AND st.style = smq.style
       WHERE st.stock_amt > 0
         AND st.mid_category_kr IN ('신발', '모자', '가방', '기타')
     ),
     
-    -- 시즌 그룹 분류 (변경: 시즌 구분 선행, 과시즌만 2단계 정체재고 판단)
+    -- 시즌 그룹 분류 (변경: 당월수량미달 먼저, 그 다음 시즌 구분, 과시즌만 2단계 정체재고 판단)
     with_season_group AS (
       SELECT 
         month,
@@ -198,8 +222,11 @@ function buildMonthlyStockQuery(
         sales_amt,
         stock_amt_total_mid,
         prev_stock_qty,
+        style_current_qty,
         CASE 
-          -- 1. 먼저 시즌 구분 (당시즌, 차기시즌은 정체재고로 바뀌지 않음)
+          -- 0. 먼저 스타일 기준 당월수량 < currentMonthMinQty이면 당월수량미달
+          WHEN style_current_qty < ${currentMonthMinQty} THEN '당월수량미달'
+          -- 1. 시즌 구분 (당시즌, 차기시즌은 정체재고로 바뀌지 않음)
           WHEN season LIKE '${yearShort}%' THEN '당시즌'
           WHEN season LIKE '${nextYearShort}%' THEN '차기시즌'
           -- 2. 과시즌인 경우 2단계 판단
@@ -239,6 +266,7 @@ function transformResults(rows: any[]): MonthSeasonData[] {
       과시즌: { stock_amt: 0, sales_amt: 0 },
       당시즌: { stock_amt: 0, sales_amt: 0 },
       차기시즌: { stock_amt: 0, sales_amt: 0 },
+      당월수량미달: { stock_amt: 0, sales_amt: 0 },
       total_stock_amt: 0,
       total_sales_amt: 0,
     });
@@ -275,7 +303,7 @@ export default async function handler(
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const { brand, thresholdPct, dimensionTab, itemFilter, minQty: minQtyParam } = req.query;
+  const { brand, thresholdPct, dimensionTab, itemFilter, minQty: minQtyParam, currentMonthMinQty: currentMonthMinQtyParam } = req.query;
 
   // 파라미터 검증
   if (!brand || typeof brand !== "string") {
@@ -286,18 +314,19 @@ export default async function handler(
   const thresholdRatio = threshold / 100; // 0.01% → 0.0001
   const dimTab = (dimensionTab as DimensionTab) || "스타일";
   const itemTab = (itemFilter as ItemFilterTab) || "ACC합계";
-  const minQty = parseInt(minQtyParam as string, 10) || 10; // 최소 수량 기준 (기본값 10)
+  const minQty = parseInt(minQtyParam as string, 10) || 10; // 최소 수량 기준 (기본값 10) - 전월말 기준
+  const currentMonthMinQty = parseInt(currentMonthMinQtyParam as string, 10) || 10; // 당월수량 기준 (기본값 10)
 
   const { currentYear, nextYear } = getYearConfig();
 
   try {
     // 2024년 데이터 조회
-    const query2024 = buildMonthlyStockQuery(brand, "2024", thresholdRatio, "24", "25", dimTab, itemTab, minQty);
+    const query2024 = buildMonthlyStockQuery(brand, "2024", thresholdRatio, "24", "25", dimTab, itemTab, minQty, currentMonthMinQty);
     const result2024 = await runQuery(query2024);
     const data2024 = transformResults(result2024);
 
     // 2025년 데이터 조회
-    const query2025 = buildMonthlyStockQuery(brand, "2025", thresholdRatio, "25", "26", dimTab, itemTab, minQty);
+    const query2025 = buildMonthlyStockQuery(brand, "2025", thresholdRatio, "25", "26", dimTab, itemTab, minQty, currentMonthMinQty);
     const result2025 = await runQuery(query2025);
     const data2025 = transformResults(result2025);
 
@@ -313,6 +342,7 @@ export default async function handler(
         thresholdPct: threshold,
         currentYear,
         nextYear,
+        currentMonthMinQty,
       },
     };
 

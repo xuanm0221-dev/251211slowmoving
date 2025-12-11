@@ -90,6 +90,25 @@ function buildAvailableMonthsQuery(brand: string): string {
   `;
 }
 
+// 스타일 기준 당월수량 조회 쿼리 (당월수량미달 판단용)
+// 스타일별로 당월 재고수량을 집계하여 반환
+function buildStyleStockQtyQuery(
+  brand: string,
+  targetMonth: string
+): string {
+  return `
+    SELECT 
+      a.prdt_cd AS style,
+      SUM(a.stock_qty_expected) AS current_stock_qty
+    FROM fnf.chn.dw_stock_m a
+    LEFT JOIN fnf.sap_fnf.mst_prdt b ON a.prdt_cd = b.prdt_cd
+    WHERE a.yymm = '${targetMonth}'
+      AND a.brd_cd = '${brand}'
+      AND b.prdt_hrrc1_nm = 'ACC'
+    GROUP BY a.prdt_cd
+  `;
+}
+
 // 정체재고 분석 메인 쿼리 생성 (채널별 데이터 포함)
 // 정체/정상 판단은 전체(FR+OR+HQ) 기준으로 수행하고, 채널별 재고/판매 데이터를 별도로 집계
 function buildStagnantStockQuery(
@@ -387,7 +406,7 @@ export default async function handler(
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const { brand, targetMonth, dimensionTab, thresholdPct, minQty: minQtyParam } = req.query;
+  const { brand, targetMonth, dimensionTab, thresholdPct, minQty: minQtyParam, currentMonthMinQty: currentMonthMinQtyParam } = req.query;
 
   // 파라미터 검증
   if (!brand || typeof brand !== "string") {
@@ -400,7 +419,8 @@ export default async function handler(
   const dimTab = (dimensionTab as DimensionTab) || "스타일";
   const threshold = parseFloat(thresholdPct as string) || 0.01;
   const thresholdRatio = threshold / 100; // 0.01% → 0.0001
-  const minQty = parseInt(minQtyParam as string, 10) || 10; // 최소 수량 기준 (기본값 10)
+  const minQty = parseInt(minQtyParam as string, 10) || 10; // 최소 수량 기준 (기본값 10) - 전월말 기준
+  const currentMonthMinQty = parseInt(currentMonthMinQtyParam as string, 10) || 10; // 당월수량 기준 (기본값 10)
   const prevMonth = getPrevMonth(targetMonth); // 전월 계산
 
   const { currentYear, nextYear } = getYearConfig();
@@ -411,25 +431,55 @@ export default async function handler(
     const monthsResult = await runQuery(monthsQuery);
     const availableMonths = monthsResult.map((row: any) => row.SALE_YM);
 
-    // 2. 정체재고 분석 데이터 조회 (전월 재고 수량 포함)
+    // 2. 스타일 기준 당월수량 조회 (당월수량미달 판단용)
+    const styleStockQuery = buildStyleStockQtyQuery(brand, targetMonth);
+    const styleStockResult = await runQuery(styleStockQuery);
+    
+    // 스타일별 당월수량 맵 생성 + 당월수량미달 스타일 목록 추출
+    const styleStockQtyMap = new Map<string, number>();
+    const lowStockStyles = new Set<string>();
+    
+    styleStockResult.forEach((row: any) => {
+      const style = row.STYLE || "";
+      const qty = Number(row.CURRENT_STOCK_QTY) || 0;
+      styleStockQtyMap.set(style, qty);
+      
+      // 당월수량 < currentMonthMinQty인 스타일 추출
+      if (qty < currentMonthMinQty) {
+        lowStockStyles.add(style);
+      }
+    });
+
+    // 3. 정체재고 분석 데이터 조회 (전월 재고 수량 포함)
     const mainQuery = buildStagnantStockQuery(brand, targetMonth, dimTab, thresholdRatio, prevMonth);
     const mainResult = await runQuery(mainQuery);
 
-    // 3. 결과 변환 (채널별 데이터 포함)
-    // 변경: 과시즌에 대해 2단계 정체재고 판단 (전월 수량 + 비율)
+    // 4. 결과 변환 (채널별 데이터 포함)
+    // 변경: 당월수량미달 먼저 판단 → 나머지에 대해 기존 정체재고 로직
     const items: StagnantStockItem[] = mainResult.map((row: any) => {
       const season = row.SEASON || "";
       const ratio = Number(row.RATIO) || 0;
       const prevStockQty = Number(row.PREV_STOCK_QTY) || 0;
+      const prdtCd = row.PRDT_CD || "";
       
-      // seasonGroup 결정: 시즌 구분 먼저, 과시즌인 경우 2단계 판단
-      const seasonGroup = getSeasonGroup(season, ratio, thresholdRatio, currentYear, nextYear, prevStockQty, minQty);
-      // status는 seasonGroup 기반으로 결정 (정체재고이면 정체재고, 아니면 정상재고)
+      // 1단계: 스타일 기준 당월수량미달 판단 (스타일이 lowStockStyles에 포함되면 당월수량미달)
+      const isLowStock = lowStockStyles.has(prdtCd);
+      
+      // seasonGroup 결정: 당월수량미달 먼저, 아니면 기존 로직
+      let seasonGroup: SeasonGroup;
+      if (isLowStock) {
+        seasonGroup = "당월수량미달";
+      } else {
+        // 기존 로직: 시즌 구분 먼저, 과시즌인 경우 2단계 판단
+        seasonGroup = getSeasonGroup(season, ratio, thresholdRatio, currentYear, nextYear, prevStockQty, minQty);
+      }
+      
+      // status는 seasonGroup 기반으로 결정 (정체재고이면 정체재고, 당월수량미달/기타는 정상재고)
       const status: StockStatus = seasonGroup === "정체재고" ? "정체재고" : "정상재고";
 
       return {
         dimensionKey: row.DIMENSION_KEY || "",
-        prdt_cd: row.PRDT_CD || "",
+        prdt_cd: prdtCd,
         prdt_nm: row.PRDT_NM || "",
         color_cd: row.COLOR_CD,
         size_cd: row.SIZE_CD,
@@ -454,25 +504,34 @@ export default async function handler(
       };
     });
 
-    // 4. 전체 재고금액 계산 (요약 박스의 % 계산용)
+    // 5. 전체 재고금액 계산 (요약 박스의 % 계산용)
     const totalStockAmt = items.reduce((sum, item) => sum + item.stock_amt, 0);
 
-    // 5. 정체/정상 재고 분리
-    const stagnantItems = items.filter(item => item.status === "정체재고");
-    const normalItems = items.filter(item => item.status === "정상재고");
+    // 6. 정체/정상/당월수량미달 재고 분리
+    const stagnantItems = items.filter(item => item.seasonGroup === "정체재고");
+    const lowStockItems = items.filter(item => item.seasonGroup === "당월수량미달");
+    // 정상재고: 당시즌 + 차기시즌 + 과시즌 (정체재고와 당월수량미달 제외)
+    const normalItems = items.filter(item => 
+      item.seasonGroup !== "정체재고" && item.seasonGroup !== "당월수량미달"
+    );
 
-    // 6. 응답 생성
+    // 7. 응답 생성
     const response: StagnantStockResponse = {
       availableMonths,
       
       totalSummary: createSummaryBox("전체 재고", items, totalStockAmt),
       stagnantSummary: createSummaryBox("정체재고", stagnantItems, totalStockAmt),
       normalSummary: createSummaryBox("정상재고", normalItems, totalStockAmt),
+      lowStockSummary: createSummaryBox("당월수량미달", lowStockItems, totalStockAmt),
       
       stagnantDetail: createDetailTable("정체재고 - 전체", "정체재고", items),
       currentSeasonDetail: createDetailTable("당시즌 정상재고", "당시즌", items),
       nextSeasonDetail: createDetailTable("차기시즌 정상재고", "차기시즌", items),
       pastSeasonDetail: createDetailTable("과시즌 정상재고", "과시즌", items),
+      lowStockDetail: createDetailTable("당월수량미달 재고", "당월수량미달", items),
+      
+      // 당월수량미달 스타일 목록 (다른 분석단위에서 참조용)
+      excludedStyles: Array.from(lowStockStyles),
       
       meta: {
         targetMonth,
@@ -481,6 +540,7 @@ export default async function handler(
         thresholdPct: threshold,
         currentYear,
         nextYear,
+        currentMonthMinQty,
       },
     };
 

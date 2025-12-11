@@ -12,7 +12,7 @@ export type StagnantChannel = "전체" | "FR" | "본사";
 export type StockStatus = "정체재고" | "정상재고";
 
 // 시즌 구분
-export type SeasonGroup = "정체재고" | "당시즌" | "차기시즌" | "과시즌";
+export type SeasonGroup = "정체재고" | "당시즌" | "차기시즌" | "과시즌" | "당월수량미달";
 
 // 중분류
 export type MidCategory = "전체" | "신발" | "모자" | "가방" | "기타";
@@ -88,12 +88,17 @@ export interface StagnantStockResponse {
   totalSummary: SummaryBoxData;      // 전체 재고
   stagnantSummary: SummaryBoxData;   // 정체재고
   normalSummary: SummaryBoxData;     // 정상재고
+  lowStockSummary: SummaryBoxData;   // 당월수량미달 (스타일 기준 당월수량 < N개)
   
   // 상세 테이블 데이터
   stagnantDetail: DetailTableData;   // 정체재고 - 전체
   currentSeasonDetail: DetailTableData;  // 당시즌 정상재고
   nextSeasonDetail: DetailTableData;     // 차기시즌 정상재고
   pastSeasonDetail: DetailTableData;     // 과시즌 정상재고
+  lowStockDetail: DetailTableData;       // 당월수량미달 (스타일 기준)
+  
+  // 당월수량미달 제외 스타일 목록 (다른 분석단위에서 사용)
+  excludedStyles: string[];
   
   // 메타 정보
   meta: {
@@ -103,6 +108,7 @@ export interface StagnantStockResponse {
     thresholdPct: number;
     currentYear: string;  // 당해 연도 (예: "25")
     nextYear: string;     // 차기 연도 (예: "26")
+    currentMonthMinQty: number;  // 당월수량 기준 (기본값 10)
   };
 }
 

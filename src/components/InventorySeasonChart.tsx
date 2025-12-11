@@ -27,7 +27,8 @@ interface InventorySeasonChartProps {
   dimensionTab?: DimensionTab;
   onDimensionTabChange?: (tab: DimensionTab) => void;
   thresholdPct?: number;
-  minQty?: number;  // 최소 수량 기준 (정체재고 판단용)
+  minQty?: number;  // 최소 수량 기준 (정체재고 판단용) - 전월말 기준
+  currentMonthMinQty?: number;  // 당월수량 기준 (당월수량미달 판단용)
   itemTab?: ItemFilterTab;
   onItemTabChange?: (tab: ItemFilterTab) => void;
 }
@@ -36,7 +37,7 @@ interface InventorySeasonChartProps {
 const ITEM_FILTER_TABS: ItemFilterTab[] = ["ACC합계", "신발", "모자", "가방", "기타"];
 
 // 시즌 그룹 타입
-type SeasonGroup = "정체재고" | "당시즌" | "차기시즌" | "과시즌";
+type SeasonGroup = "정체재고" | "당시즌" | "차기시즌" | "과시즌" | "당월수량미달";
 
 // 월별 시즌 데이터
 interface MonthSeasonData {
@@ -45,6 +46,7 @@ interface MonthSeasonData {
   과시즌: { stock_amt: number; sales_amt: number };
   당시즌: { stock_amt: number; sales_amt: number };
   차기시즌: { stock_amt: number; sales_amt: number };
+  당월수량미달: { stock_amt: number; sales_amt: number };
   total_stock_amt: number;
   total_sales_amt: number;
 }
@@ -58,6 +60,7 @@ interface InventorySeasonChartResponse {
     thresholdPct: number;
     currentYear: string;
     nextYear: string;
+    currentMonthMinQty: number;
   };
 }
 
@@ -72,6 +75,7 @@ const COLORS = {
     과시즌: "#D1D5DB",    // 연그레이
     당시즌: "#7DD3FC",    // 하늘색
     차기시즌: "#C4B5FD",  // 연보라
+    당월수량미달: "#FEF3C7",  // 연한 노랑
   },
   // 당년(2025년)
   curr: {
@@ -79,13 +83,14 @@ const COLORS = {
     과시즌: "#6B7280",    // 회색
     당시즌: "#2563EB",    // 파랑
     차기시즌: "#7C3AED",  // 보라
+    당월수량미달: "#FDE68A",  // 노랑
   },
   // YOY 라인 (매출액 기준)
   yoy: "#FDA4AF",  // 파스텔 핑크
 };
 
 // 시즌 순서 (스택 순서: 아래부터 위로)
-const SEASON_ORDER: SeasonGroup[] = ["과시즌", "당시즌", "차기시즌", "정체재고"];
+const SEASON_ORDER: SeasonGroup[] = ["당월수량미달", "과시즌", "당시즌", "차기시즌", "정체재고"];
 
 // 숫자 포맷팅 함수
 function formatNumber(num: number): string {
@@ -245,7 +250,7 @@ const SalesTooltip = ({ active, payload, label, data2024, data2025 }: SalesToolt
 
   const daysInMonth = getDaysInMonth(curr.month);
 
-  // 테이블 행 데이터 구성: 전체, 차기시즌, 당시즌, 과시즌, 정체재고
+  // 테이블 행 데이터 구성: 전체, 차기시즌, 당시즌, 과시즌, 정체재고, 당월수량미달
   const rows = [
     {
       name: "전체",
@@ -276,6 +281,12 @@ const SalesTooltip = ({ active, payload, label, data2024, data2025 }: SalesToolt
       color: COLORS.curr.정체재고,
       sale: curr.정체재고.sales_amt,
       stock: curr.정체재고.stock_amt,
+    },
+    {
+      name: "당월수량미달",
+      color: COLORS.curr.당월수량미달,
+      sale: curr.당월수량미달.sales_amt,
+      stock: curr.당월수량미달.stock_amt,
     },
   ];
 
@@ -332,7 +343,7 @@ const SalesTooltip = ({ active, payload, label, data2024, data2025 }: SalesToolt
 // 데이터 기준월 제한 상수 (2025년 11월까지만 표시)
 const MAX_MONTH = "202511";
 
-export default function InventorySeasonChart({ brand, dimensionTab = "스타일", onDimensionTabChange, thresholdPct = 0.01, minQty = 10, itemTab = "ACC합계", onItemTabChange }: InventorySeasonChartProps) {
+export default function InventorySeasonChart({ brand, dimensionTab = "스타일", onDimensionTabChange, thresholdPct = 0.01, minQty = 10, currentMonthMinQty = 10, itemTab = "ACC합계", onItemTabChange }: InventorySeasonChartProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<InventorySeasonChartResponse | null>(null);
@@ -340,7 +351,7 @@ export default function InventorySeasonChart({ brand, dimensionTab = "스타일"
 
   const brandCode = BRAND_CODE_MAP[brand] || "M";
 
-  // 데이터 로드 (dimensionTab, thresholdPct, minQty, itemTab 변경 시 다시 로드)
+  // 데이터 로드 (dimensionTab, thresholdPct, minQty, currentMonthMinQty, itemTab 변경 시 다시 로드)
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
@@ -350,6 +361,7 @@ export default function InventorySeasonChart({ brand, dimensionTab = "스타일"
           brand: brandCode,
           thresholdPct: String(thresholdPct),
           minQty: String(minQty),
+          currentMonthMinQty: String(currentMonthMinQty),
           dimensionTab: dimensionTab,
           itemFilter: itemTab,
         });
@@ -366,7 +378,7 @@ export default function InventorySeasonChart({ brand, dimensionTab = "스타일"
       }
     };
     fetchData();
-  }, [brandCode, dimensionTab, thresholdPct, minQty, itemTab]);
+  }, [brandCode, dimensionTab, thresholdPct, minQty, currentMonthMinQty, itemTab]);
 
   // 차트 데이터 생성
   const chartData = useMemo(() => {
@@ -389,11 +401,13 @@ export default function InventorySeasonChart({ brand, dimensionTab = "스타일"
           month: `2025-${String(monthNum).padStart(2, "0")}`,
           monthIdx: idx,
           // 전년 재고 (왼쪽 막대) - 1~5월은 0
+          prev_당월수량미달: showPrevData ? (prev?.당월수량미달?.stock_amt || 0) / 1_000_000 : 0,
           prev_과시즌: showPrevData ? (prev?.과시즌?.stock_amt || 0) / 1_000_000 : 0,
           prev_당시즌: showPrevData ? (prev?.당시즌?.stock_amt || 0) / 1_000_000 : 0,
           prev_차기시즌: showPrevData ? (prev?.차기시즌?.stock_amt || 0) / 1_000_000 : 0,
           prev_정체재고: showPrevData ? (prev?.정체재고?.stock_amt || 0) / 1_000_000 : 0,
           // 당년 재고 (오른쪽 막대)
+          curr_당월수량미달: (curr.당월수량미달?.stock_amt || 0) / 1_000_000,
           curr_과시즌: (curr.과시즌?.stock_amt || 0) / 1_000_000,
           curr_당시즌: (curr.당시즌?.stock_amt || 0) / 1_000_000,
           curr_차기시즌: (curr.차기시즌?.stock_amt || 0) / 1_000_000,
@@ -413,6 +427,7 @@ export default function InventorySeasonChart({ brand, dimensionTab = "스타일"
 
         // 매출 비중(%) 계산
         const salesTotal = curr.total_sales_amt || 0;
+        const sales당월수량미달 = curr.당월수량미달?.sales_amt || 0;
         const sales과시즌 = curr.과시즌?.sales_amt || 0;
         const sales당시즌 = curr.당시즌?.sales_amt || 0;
         const sales차기시즌 = curr.차기시즌?.sales_amt || 0;
@@ -422,16 +437,19 @@ export default function InventorySeasonChart({ brand, dimensionTab = "스타일"
           month: `2025-${String(monthNum).padStart(2, "0")}`,
           monthIdx: idx,
           // 당년 판매 (왼쪽 막대)
+          sales_당월수량미달: sales당월수량미달 / 1_000_000,
           sales_과시즌: sales과시즌 / 1_000_000,
           sales_당시즌: sales당시즌 / 1_000_000,
           sales_차기시즌: sales차기시즌 / 1_000_000,
           sales_정체재고: sales정체재고 / 1_000_000,
           // 매출 비중(%) - 소수점 0자리 반올림
+          sales_당월수량미달_ratio: salesTotal > 0 ? Math.round((sales당월수량미달 / salesTotal) * 100) : 0,
           sales_과시즌_ratio: salesTotal > 0 ? Math.round((sales과시즌 / salesTotal) * 100) : 0,
           sales_당시즌_ratio: salesTotal > 0 ? Math.round((sales당시즌 / salesTotal) * 100) : 0,
           sales_차기시즌_ratio: salesTotal > 0 ? Math.round((sales차기시즌 / salesTotal) * 100) : 0,
           sales_정체재고_ratio: salesTotal > 0 ? Math.round((sales정체재고 / salesTotal) * 100) : 0,
           // 당년 재고 (오른쪽 막대)
+          curr_당월수량미달: (curr.당월수량미달?.stock_amt || 0) / 1_000_000,
           curr_과시즌: (curr.과시즌?.stock_amt || 0) / 1_000_000,
           curr_당시즌: (curr.당시즌?.stock_amt || 0) / 1_000_000,
           curr_차기시즌: (curr.차기시즌?.stock_amt || 0) / 1_000_000,
@@ -838,6 +856,7 @@ export default function InventorySeasonChart({ brand, dimensionTab = "스타일"
             {mode === "전년대비" ? (
               <>
                 {/* 전년 재고 막대 (왼쪽) - 막대 안에 비율 표시 */}
+                <Bar yAxisId="inventory" dataKey="prev_당월수량미달" stackId="prev" fill={COLORS.prev.당월수량미달} name="24년 당월수량미달" />
                 <Bar yAxisId="inventory" dataKey="prev_과시즌" stackId="prev" fill={COLORS.prev.과시즌} name="24년 과시즌">
                   <LabelList content={renderPrev과시즌Label} />
                 </Bar>
@@ -852,6 +871,7 @@ export default function InventorySeasonChart({ brand, dimensionTab = "스타일"
                 </Bar>
                 
                 {/* 당년 재고 막대 (오른쪽) - 막대 안에 비율 표시 */}
+                <Bar yAxisId="inventory" dataKey="curr_당월수량미달" stackId="curr" fill={COLORS.curr.당월수량미달} name="25년 당월수량미달" />
                 <Bar yAxisId="inventory" dataKey="curr_과시즌" stackId="curr" fill={COLORS.curr.과시즌} name="25년 과시즌">
                   <LabelList content={renderCurr과시즌Label} />
                 </Bar>
@@ -869,6 +889,7 @@ export default function InventorySeasonChart({ brand, dimensionTab = "스타일"
             ) : (
               <>
                 {/* 당년 판매 막대 - yAxisId="sales" (왼쪽 Y축) - 막대 안에 비율 표시 */}
+                <Bar yAxisId="sales" dataKey="sales_당월수량미달" stackId="sales" fill={COLORS.prev.당월수량미달} name="25년 판매 당월수량미달" />
                 <Bar yAxisId="sales" dataKey="sales_과시즌" stackId="sales" fill={COLORS.prev.과시즌} name="25년 판매 과시즌">
                   <LabelList content={renderSales과시즌Label} />
                 </Bar>
@@ -883,6 +904,7 @@ export default function InventorySeasonChart({ brand, dimensionTab = "스타일"
                 </Bar>
                 
                 {/* 당년 재고 막대 - yAxisId="inventory" (오른쪽 Y축) - 막대 안에 비율 표시 */}
+                <Bar yAxisId="inventory" dataKey="curr_당월수량미달" stackId="curr" fill={COLORS.curr.당월수량미달} name="25년 재고 당월수량미달" />
                 <Bar yAxisId="inventory" dataKey="curr_과시즌" stackId="curr" fill={COLORS.curr.과시즌} name="25년 재고 과시즌">
                   <LabelList content={renderCurr과시즌LabelForSales} />
                 </Bar>

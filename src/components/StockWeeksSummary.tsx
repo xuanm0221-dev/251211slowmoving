@@ -393,6 +393,14 @@ export default function StockWeeksSummary({
             <span className="text-blue-500 font-medium">파란색</span>
             <span>= 감소 (전년 대비 ↓)</span>
           </div>
+          <div className="border-l border-gray-300 pl-4 ml-2 flex items-center gap-1">
+            <span className="font-medium">주력상품:</span>
+            <span>INTRO, FOCUS, 26SS</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <span className="font-medium">아울렛상품:</span>
+            <span>OUTLET, CARE, DONE</span>
+          </div>
         </div>
       </div>
     </div>
